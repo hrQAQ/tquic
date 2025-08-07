@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::io::Write;
+
 use bytes::Bytes;
 
 use crate::codec;
@@ -21,6 +23,7 @@ use crate::error::Error;
 use crate::packet::PacketType;
 #[cfg(feature = "qlog")]
 use crate::qlog;
+use crate::qlog::events::DataRecipient;
 #[cfg(feature = "qlog")]
 use crate::qlog::events::ErrorSpace;
 #[cfg(feature = "qlog")]
@@ -178,6 +181,15 @@ pub enum Frame {
         seq_num: u64,
         status: u64,
     },
+    /// 8_7 by dingzhanjie 
+    /// datagram的帧类型按照RFC9221的要求定义为0x30和0x31
+    /// if_length指明帧是否有长度字段，length在没有长度字段时也记录长度，data存储数据
+    DatagramFrame
+    {
+        if_length:bool,
+        length:u64,
+        data:Vec<u8>,
+    },
 }
 
 impl Frame {
@@ -187,6 +199,7 @@ impl Frame {
         let len = b.len();
 
         let frame_type = b.read_varint()?;
+        /// 解包帧类型
         let frame = match frame_type {
             0x00 => {
                 let mut len = 1;
@@ -358,6 +371,35 @@ impl Frame {
                 seq_num: b.read_varint()?,
                 status: b.read_varint()?,
             },
+
+            ///0x30说明是带不带长度的datagram, 因此if_length=false,length不存在
+            0x30 =>{
+                let data_len=b.len() as u64;
+                /// let data= b.read_bytes(data_len as usize)?.to_vec();
+                
+                Frame::DatagramFrame { 
+                if_length:false,
+                length: data_len, 
+                data: b.read_with_varint_length()?.to_vec(),
+             }
+            },
+            
+            /// 0x31说明是带长度的datagram，因此if_length=true,length存在
+            0x31 =>{
+                let data_len= b.read_varint()?;
+                ///                if data_len as usize > b.len() {
+                ///    return Err(Error::BufferTooShort);
+                ///}
+                let data = b.read_bytes(data_len as usize)?.to_vec(); // 读取指定长度数据
+
+                Frame::DatagramFrame { 
+                if_length: true,
+                length: data_len, 
+                data: b.read_with_varint_length()?.to_vec(),
+            }
+            },
+            ///这样的解包就应该完成了
+
 
             _ => return Err(Error::FrameEncodingError),
         };
@@ -609,6 +651,21 @@ impl Frame {
                 b.write_varint(*seq_num)?;
                 b.write_varint(*status)?;
             }
+            Frame::DatagramFrame { 
+                if_length,
+                length,
+                data
+            } => {
+                if if_length==true
+                {
+                    b.write_varint(0x31)?;
+                    b.write_varint(*length)?;
+                    b.write(data.as_ref())?;
+                }else{
+                    b.write_varint(0x30)?;
+                    b.write_varint(data.as_ref())?;
+                }
+            }
         }
 
         Ok(len - b.len())
@@ -766,6 +823,16 @@ impl Frame {
                 4 + codec::encode_varint_len(*dcid_seq_num)
                     + codec::encode_varint_len(*seq_num)
                     + codec::encode_varint_len(*status)
+            }
+
+            ///our_flame
+            Frame::DatagramFrame { 
+                if_length,
+                 length, 
+                 data
+            }=>
+            {
+
             }
         }
     }
@@ -932,6 +999,16 @@ impl Frame {
                 raw_frame_type: 0x15228c06,
                 frame_type_value: None,
                 raw: None,
+            },
+
+            ///our_flame
+            Frame::DatagramFrame { 
+                if_length,
+                 length, 
+                 data
+            }=>
+            {
+
             },
         }
     }
@@ -1112,6 +1189,16 @@ impl std::fmt::Debug for Frame {
                     "PATH_STATUS dcid_seq_num={dcid_seq_num:x} seq_num={seq_num:x} status={status:x}",
                 )?;
             }
+
+            ///our_flame
+            Frame::DatagramFrame { 
+                if_length,
+                 length, 
+                 data
+            }=>
+            {
+
+            },
         }
 
         Ok(())
