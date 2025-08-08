@@ -184,7 +184,7 @@ pub enum Frame {
     /// 8_7 by dingzhanjie 
     /// datagram的帧类型按照RFC9221的要求定义为0x30和0x31
     /// if_length指明帧是否有长度字段，length在没有长度字段时也记录长度，data存储数据
-    DatagramFrame
+    Datagram
     {
         if_length:bool,
         length:u64,
@@ -377,25 +377,25 @@ impl Frame {
                 let data_len=b.len() as u64;
                 /// let data= b.read_bytes(data_len as usize)?.to_vec();
                 
-                Frame::DatagramFrame { 
+                Frame::Datagram { 
                 if_length:false,
                 length: data_len, 
-                data: b.read_with_varint_length()?.to_vec(),
-             }
+                data: b.read(data_len as usize)?,
+            }
             },
             
             /// 0x31说明是带长度的datagram，因此if_length=true,length存在
             0x31 =>{
                 let data_len= b.read_varint()?;
-                ///                if data_len as usize > b.len() {
-                ///    return Err(Error::BufferTooShort);
-                ///}
-                let data = b.read_bytes(data_len as usize)?.to_vec(); // 读取指定长度数据
+                if data_len as usize > b.len() {
+                  return Err(Error::BufferTooShort);
+                }
+                let data = b.read(data_len as usize)?; // 读取指定长度数据
 
-                Frame::DatagramFrame { 
+                Frame::Datagram { 
                 if_length: true,
                 length: data_len, 
-                data: b.read_with_varint_length()?.to_vec(),
+                data: data,
             }
             },
             ///这样的解包就应该完成了
@@ -651,7 +651,9 @@ impl Frame {
                 b.write_varint(*seq_num)?;
                 b.write_varint(*status)?;
             }
-            Frame::DatagramFrame { 
+
+            /// 这样封包就完成了？
+            Frame::Datagram { 
                 if_length,
                 length,
                 data
@@ -826,13 +828,20 @@ impl Frame {
             }
 
             ///our_flame
-            Frame::DatagramFrame { 
+            Frame::Datagram { 
                 if_length,
                  length, 
                  data
             }=>
             {
-
+                if if_length==true
+                {
+                    1+codec::encode_varint_len(*length as u64)+data.len()
+                    /// type + length +length of data
+                }else{
+                    1+data.len()
+                    /// type + length of data
+                }
             }
         }
     }
@@ -1001,15 +1010,21 @@ impl Frame {
                 raw: None,
             },
 
-            ///our_flame
-            Frame::DatagramFrame { 
+            ///our_flame ,这里是记录日志的地方,先用unknown记录吧
+            Frame::Datagram { 
                 if_length,
-                 length, 
-                 data
+                length, 
+                data
             }=>
             {
-
+                if *if_length
+                {
+                    QuicFrame::Unknown { raw_frame_type:0x31 , frame_type_value: None, raw: None }
+                }else{
+                    QuicFrame::Unknown { raw_frame_type:0x30 , frame_type_value: None, raw: None }
+                }
             },
+
         }
     }
 
@@ -1191,13 +1206,19 @@ impl std::fmt::Debug for Frame {
             }
 
             ///our_flame
-            Frame::DatagramFrame { 
+            Frame::Datagram { 
                 if_length,
                  length, 
                  data
             }=>
-            {
-
+            {   
+                if if_length
+                {
+                    write!(f,"DATAGRAM type = 0x31 length = {length:x}")
+                }else{
+                    let data_len=data.len();
+                    write!(f,"DATAGRAM type = 0x30 length = {data_len}")
+                }
             },
         }
 
@@ -1989,5 +2010,18 @@ mod tests {
         );
 
         Ok(())
+    }
+
+    #[test]
+    fn datagram()->Result<()>
+    {
+        let data =Bytes::from_static(&[
+            0x0e, 0x00, 0x00, 0x1c, 0x80, 0x00, 0xcf, 0xff, 0x00, 0xff, 0xff, 0xff, 0xff, 0xff,
+            0xff, 0xff, 0xff, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00,
+        ]).to_vec();
+        let datagram_flame_with_length=Frame::Datagram { if_length: true, length: data.len(), data: data };
+        let datagram_flame_no_length=Frame::Datagram { if_length: false, length: data.len(), data: data };
+
     }
 }
