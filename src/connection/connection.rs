@@ -990,7 +990,9 @@ impl Connection {
             }
             Frame::Datagram { has_length, length, data }=>
             {
-
+                ///这里需要添加收到datagram帧后的处理，需要通知应用层收到数据包，触发event事件
+                /// 更新datagram的统计信息
+                /// 不需要流控，不需要重传，已经标记为返回ack
             }
         }
 
@@ -1203,6 +1205,10 @@ impl Connection {
             }
         }
 
+        ///这里是处理传输参数的，要不要增加对max_datagram_flame_size的处理呢？
+        /// 
+
+
         // The remote server can issue a stateless_reset_token transport parameter
         // that applies to the connection ID that it selected during the handshake.
         if let Some(reset_token) = peer_params.stateless_reset_token {
@@ -1255,6 +1261,9 @@ impl Connection {
         active_path
             .recovery
             .update_max_datagram_size(max_datagram_size, true);
+
+        /// 设置max_datagram_flame_size
+        self.peer_transport_params.max_datagram_frame_size=peer_params.max_datagram_frame_size;
 
         self.cids.set_scid_limit(peer_params.active_conn_id_limit);
 
@@ -1499,7 +1508,12 @@ impl Connection {
                             debug!("{} path {:?} MTU is {} now", self.trace_id, path, current);
                         }
                     }
-
+                    Frame::Datagram { has_length, length, data 
+                    }=>{
+                        ///1通知应用层datagram已经被ack
+                        /// 2可能的对datagram的统计
+                        /// 3qlog记录datagram的确认
+                    }
                     _ => (),
                 }
             }
@@ -1526,6 +1540,9 @@ impl Connection {
     }
 
     /// Get the maximum datagram size of the given path.
+    /// 这里是用于计算UDP路线上的最大载荷，如果直接将max_datagram_flame_size加在这里，将会导致
+    /// 当max_datagram_flame_size为0，只是不传输datagram帧，却影响了其他帧的传输
+    /// 故此次不能使用max_datagram_flame_size，应在datagram发送和接受时单独进行限制
     pub(crate) fn max_datagram_size(&self, pid: usize) -> usize {
         // The peer's `max_udp_payload_size` transport parameter limits the
         // size of UDP payloads that it is willing to receive. Therefore,
@@ -1767,7 +1784,7 @@ impl Connection {
             overhead: total_overhead,
             ..FrameWriteStatus::default()
         };
-
+        ///这里开始向包中写入不同的帧了，需要在send_flame中新增对datagram帧的处理
         match self.send_frames(
             &mut out[payload_offset..],
             left,
@@ -2017,6 +2034,12 @@ impl Connection {
 
         // Write STREAM frames
         self.try_write_stream_frames(out, st, pkt_type, path_id)?;
+
+        //在stream帧后写入datagram?,如果max参数为0就不写入，省去了0rtt与1rtt的区分？
+        if self.peer_transport_params.max_datagram_frame_size!=0 
+        {
+            self.try_write_datagram_frames(out, st, pkt_type, path_id)?;
+        }
 
         // Write a NEW_TOKEN frame
         self.try_write_new_token_frame(out, st, pkt_type, path_id)?;
@@ -2628,6 +2651,15 @@ impl Connection {
         Ok(())
     }
 
+    fn try_write_datagram_frames(
+        &mut self,
+        out: &mut [u8],
+        st: &mut FrameWriteStatus,
+        pkt_type: PacketType,
+        path_id: usize,
+    ){
+
+    }
     /// Populate NewToken frame to packet payload buffer.
     fn try_write_new_token_frame(
         &mut self,
