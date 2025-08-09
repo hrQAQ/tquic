@@ -121,6 +121,12 @@ pub struct TransportParams {
     /// completely trust the path between themselves.
     /// See draft-banks-quic-disable-encryption-00.
     pub disable_encryption: bool,
+
+    /// max_data_frame_size 用于通知对端，或限制本端发送出的datagram帧的最大长度
+    /// 默认值为65535
+    /// 在0rtt模式下需要读取之前的session来知晓是否收到或者使用了非0的本参数
+    /// 当本参数为0时表示不支持datagram，
+    pub max_datagram_frame_size:u64,
 }
 
 impl TransportParams {
@@ -483,6 +489,9 @@ impl Default for TransportParams {
 
             enable_multipath: false,
             disable_encryption: false,
+
+            ///在这里设定max_datagram_frame_size的默认值是65535
+            max_datagram_frame_size:65535,
         }
     }
 }
@@ -583,6 +592,7 @@ mod tests {
             retry_source_connection_id: None,
             enable_multipath: true,
             disable_encryption: false,
+            max_datagram_frame_size:65535,/// for test 
         };
 
         // encode on the client side
@@ -627,6 +637,7 @@ mod tests {
             retry_source_connection_id: Some(ConnectionId::random()),
             enable_multipath: false,
             disable_encryption: true,
+            max_datagram_frame_size:65535,/// for test 
         };
 
         // encode on the server side

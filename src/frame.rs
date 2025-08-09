@@ -186,7 +186,7 @@ pub enum Frame {
     /// if_length指明帧是否有长度字段，length在没有长度字段时也记录长度，data存储数据
     Datagram
     {
-        if_length:bool,
+        has_length:bool,
         length:u64,
         data:Vec<u8>,
     },
@@ -378,7 +378,7 @@ impl Frame {
                 /// let data= b.read_bytes(data_len as usize)?.to_vec();
                 
                 Frame::Datagram { 
-                if_length:false,
+                has_length:false,
                 length: data_len, 
                 data: b.read(data_len as usize)?,
             }
@@ -393,7 +393,7 @@ impl Frame {
                 let data = b.read(data_len as usize)?; // 读取指定长度数据
 
                 Frame::Datagram { 
-                if_length: true,
+                has_length: true,
                 length: data_len, 
                 data: data,
             }
@@ -654,7 +654,7 @@ impl Frame {
 
             /// 这样封包就完成了？
             Frame::Datagram { 
-                if_length,
+                has_length: if_length,
                 length,
                 data
             } => {
@@ -829,7 +829,7 @@ impl Frame {
 
             ///our_flame
             Frame::Datagram { 
-                if_length,
+                has_length: if_length,
                  length, 
                  data
             }=>
@@ -1012,7 +1012,7 @@ impl Frame {
 
             ///our_flame ,这里是记录日志的地方,先用unknown记录吧
             Frame::Datagram { 
-                if_length,
+                has_length: if_length,
                 length, 
                 data
             }=>
@@ -1207,7 +1207,7 @@ impl std::fmt::Debug for Frame {
 
             ///our_flame
             Frame::Datagram { 
-                if_length,
+                has_length: if_length,
                  length, 
                  data
             }=>
@@ -2020,8 +2020,9 @@ mod tests {
             0xff, 0xff, 0xff, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x00, 0x00, 0x00, 0x00, 0x00,
             0x00,
         ]).to_vec();
-        let datagram_flame_with_length=Frame::Datagram { if_length: true, length: data.len(), data: data };
-        let datagram_flame_no_length=Frame::Datagram { if_length: false, length: data.len(), data: data };
+        let datagram_flame_with_length=Frame::Datagram { has_length: true, length: data.len(), data: data };
+        let datagram_flame_no_length=Frame::Datagram { has_length: false, length: data.len(), data: data };
+        
 
     }
 }

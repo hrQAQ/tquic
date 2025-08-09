@@ -613,18 +613,22 @@ impl Connection {
 
         while !payload.is_empty() {
             let (frame, len) = Frame::from_bytes(&mut payload, hdr.pkt_type)?;
+            /// 这里开始读取数据包中的帧，应从这里开始修改，使之支持datagream
             if frame.ack_eliciting() {
                 ack_eliciting_pkt = true;
+                ///不修改，datagram不在排除范围之外，标记为触发ack
             }
             if !frame.probing() {
                 probing_pkt = false;
+                ///不修改，datagram在排除范围之外，标记非探测帧
             }
             #[cfg(feature = "qlog")]
             if self.qlog.is_some() {
-                qframes.push(frame.to_qlog());
+                qframes.push(frame.to_qlog());///将datagram帧在记录日志时定义为unknown
             }
 
             self.recv_frame(frame, &hdr, pid, space_id, info.time)?;
+            ///这里应该是对帧的处理，从这里入手
             let _ = payload.split_to(len);
         }
 
@@ -752,6 +756,7 @@ impl Connection {
                 // Process acknowledgement
                 let handshake_status = self.handshake_status();
                 let path = self.paths.get_mut(path_id)?;
+                ///on_acl_received可能涉及对datagram的处理
                 let (lost_pkts, lost_bytes) = path.recovery.on_ack_received(
                     &ack_ranges,
                     ack_delay,
@@ -982,6 +987,10 @@ impl Connection {
 
             Frame::StreamsBlocked { bidi, max } => {
                 self.streams.on_streams_blocked_frame_received(max, bidi)?;
+            }
+            Frame::Datagram { has_length, length, data }=>
+            {
+
             }
         }
 
