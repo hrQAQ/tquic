@@ -38,6 +38,7 @@ use self::space::PacketNumSpace;
 use self::space::RateSamplePacketState;
 use self::space::SpaceId;
 use self::stream::Stream;
+use self::datagram::DatagramMap;
 use self::stream::StreamIter;
 use self::timer::Timer;
 use self::ConnectionFlags::*;
@@ -78,7 +79,6 @@ use crate::PathStats;
 use crate::RecoveryConfig;
 use crate::Result;
 use crate::Shutdown;
-
 /// A QUIC connection.
 pub struct Connection {
     /// QUIC version used for the connection.
@@ -988,7 +988,7 @@ impl Connection {
             Frame::StreamsBlocked { bidi, max } => {
                 self.streams.on_streams_blocked_frame_received(max, bidi)?;
             }
-            Frame::Datagram { has_length, length, data }=>
+            Frame::Datagram {  data }=>
             {
                 ///这里需要添加收到datagram帧后的处理，需要通知应用层收到数据包，触发event事件
                 /// 更新datagram的统计信息
@@ -1508,7 +1508,7 @@ impl Connection {
                             debug!("{} path {:?} MTU is {} now", self.trace_id, path, current);
                         }
                     }
-                    Frame::Datagram { has_length, length, data 
+                    Frame::Datagram { data 
                     }=>{
                         ///1通知应用层datagram已经被ack
                         /// 2可能的对datagram的统计
@@ -2035,12 +2035,11 @@ impl Connection {
         // Write STREAM frames
         self.try_write_stream_frames(out, st, pkt_type, path_id)?;
 
-        //在stream帧后写入datagram?,如果max参数为0就不写入，省去了0rtt与1rtt的区分？
-        if self.peer_transport_params.max_datagram_frame_size!=0 
-        {
-            self.try_write_datagram_frames(out, st, pkt_type, path_id)?;
-        }
-
+        ///在stream帧后写入datagram?,如果max参数为0就不写入，省去了0rtt与1rtt的区分？
+        /// 将这一步分移入try_write_datagram_frames实现了
+  
+        self.try_write_datagram_frames(out, st, pkt_type, path_id)?;
+ 
         // Write a NEW_TOKEN frame
         self.try_write_new_token_frame(out, st, pkt_type, path_id)?;
 
@@ -2657,7 +2656,19 @@ impl Connection {
         st: &mut FrameWriteStatus,
         pkt_type: PacketType,
         path_id: usize,
-    ){
+    )->Result<()>{
+        let out=&mut out[st.written..];
+        if self.is_closing()//检查流的状态
+            || out.len()<= frame::MAX_DATAGRAM_OVERHEAD//检查剩余空间是否满足datagram帧的最小值，定义为1
+            || !self.paths.get(path_id)?.active()//检查路径是否活跃
+            || self.peer_transport_params.max_datagram_frame_size==0//若对端声明窗口大小为0
+        {
+            return Ok(());
+        }
+
+        let mut remaining_space=out.len();
+        let mut bytes_written=0;
+        
 
     }
     /// Populate NewToken frame to packet payload buffer.

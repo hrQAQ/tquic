@@ -42,7 +42,8 @@ pub(crate) const MAX_STREAM_SIZE: u64 = 1 << 62;
 pub(crate) const MAX_CRYPTO_OVERHEAD: usize = 8;
 // Type (1) + Stream ID (8) + Offset (8) + Length (2)
 pub(crate) const MAX_STREAM_OVERHEAD: usize = 19;
-
+///Typr(1)+ length(>=0)+data(>=0)
+pub(crate) const MAX_DATAGRAM_OVERHEAD:usize =9;
 /// The QUIC frame is a unit of structured protocol information. Frames are
 /// contained in QUIC packets.
 #[derive(Clone, PartialEq, Eq)]
@@ -186,8 +187,6 @@ pub enum Frame {
     /// if_length指明帧是否有长度字段，length在没有长度字段时也记录长度，data存储数据
     Datagram
     {
-        has_length:bool,
-        length:u64,
         data:Vec<u8>,
     },
 }
@@ -378,8 +377,6 @@ impl Frame {
                 /// let data= b.read_bytes(data_len as usize)?.to_vec();
                 
                 Frame::Datagram { 
-                has_length:false,
-                length: data_len, 
                 data: b.read(data_len as usize)?,
             }
             },
@@ -393,8 +390,6 @@ impl Frame {
                 let data = b.read(data_len as usize)?; // 读取指定长度数据
 
                 Frame::Datagram { 
-                has_length: true,
-                length: data_len, 
                 data: data,
             }
             },
@@ -654,8 +649,6 @@ impl Frame {
 
             /// 这样封包就完成了？
             Frame::Datagram { 
-                has_length: if_length,
-                length,
                 data
             } => {
                 if if_length==true
@@ -829,19 +822,11 @@ impl Frame {
 
             ///our_flame
             Frame::Datagram { 
-                has_length: if_length,
-                 length, 
                  data
             }=>
             {
-                if if_length==true
-                {
-                    1+codec::encode_varint_len(*length as u64)+data.len()
-                    /// type + length +length of data
-                }else{
-                    1+data.len()
-                    /// type + length of data
-                }
+                1+codec::encode_varint_len(*length as u64)+data.len()
+                /// type + length +length of data
             }
         }
     }
@@ -1012,17 +997,10 @@ impl Frame {
 
             ///our_flame ,这里是记录日志的地方,先用unknown记录吧
             Frame::Datagram { 
-                has_length: if_length,
-                length, 
                 data
             }=>
             {
-                if *if_length
-                {
-                    QuicFrame::Unknown { raw_frame_type:0x31 , frame_type_value: None, raw: None }
-                }else{
-                    QuicFrame::Unknown { raw_frame_type:0x30 , frame_type_value: None, raw: None }
-                }
+                QuicFrame::Datagram { length: data.len(), raw: None }
             },
 
         }
@@ -1207,18 +1185,10 @@ impl std::fmt::Debug for Frame {
 
             ///our_flame
             Frame::Datagram { 
-                has_length: if_length,
-                 length, 
                  data
             }=>
             {   
-                if if_length
-                {
-                    write!(f,"DATAGRAM type = 0x31 length = {length:x}")
-                }else{
-                    let data_len=data.len();
-                    write!(f,"DATAGRAM type = 0x30 length = {data_len}")
-                }
+                write!(f,"DATAGRAM len={}",data.len())?;
             },
         }
 
@@ -2020,8 +1990,8 @@ mod tests {
             0xff, 0xff, 0xff, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x00, 0x00, 0x00, 0x00, 0x00,
             0x00,
         ]).to_vec();
-        let datagram_flame_with_length=Frame::Datagram { has_length: true, length: data.len(), data: data };
-        let datagram_flame_no_length=Frame::Datagram { has_length: false, length: data.len(), data: data };
+        let datagram_flame_with_length=Frame::Datagram {  data: data };
+        let datagram_flame_no_length=Frame::Datagram { data: data };
         
 
     }
