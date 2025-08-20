@@ -38,7 +38,7 @@ use self::space::PacketNumSpace;
 use self::space::RateSamplePacketState;
 use self::space::SpaceId;
 use self::stream::Stream;
-// use self::datagram::DatagramMap;
+use self::datagram::DatagramMap;
 use self::stream::StreamIter;
 use self::timer::Timer;
 use self::ConnectionFlags::*;
@@ -106,7 +106,7 @@ pub struct Connection {
     streams: stream::StreamMap,
 
     //  The datagram manager.
-    // datagram_map: datagram::DatagramMap,
+    datagram_map: datagram::DatagramMap,
 
     /// TLS session.
     tls_session: TlsSession,
@@ -267,7 +267,7 @@ impl Connection {
             multipath_scheduler: None,
             multipath_conf: conf.multipath.clone(),
             streams,
-            // datagram_map,
+            datagram_map,
             tls_session,
             crypto_streams: Rc::new(RefCell::new(CryptoStreams::new())),
             undecryptable_packets: UndecryptablePackets::new(conf.max_undecryptable_packets),
@@ -997,7 +997,8 @@ impl Connection {
                 self.streams.on_streams_blocked_frame_received(max, bidi)?;
             }
             Frame::Datagram { length, data } => {
-                // self.events.add(Event::DatagramReceived { length, data });
+                self.datagram_map.incoming_datagram(data);
+                //将datagram帧存入接收区
             }
         }
 
@@ -1194,7 +1195,7 @@ impl Connection {
 
         Ok(())
     }
-
+    //这里可能需要处理max_datagram_frame_size
     /// Validate and apply transport parameters advertised by the peer.
     fn process_peer_trans_params(&mut self, peer_params: TransportParams) -> Result<()> {
         // Validate cid related transport parameters
@@ -8012,5 +8013,5 @@ mod recovery;
 pub(crate) mod rtt;
 pub(crate) mod space;
 pub(crate) mod stream;
-// pub(crate) mod datagram;
+pub(crate) mod datagram;
 pub(crate) mod timer;
