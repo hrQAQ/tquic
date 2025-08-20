@@ -245,12 +245,11 @@ impl Connection {
         );
         streams.set_trace_id(&trace_id);
 
+        let mut peer_transport_params=TransportParams::default();
         let mut datagram_map = datagram::DatagramMap::new(
-            is_server,
-            conf.max_connection_window,
-            conf.max_datagram_size,
-            stream::StreamTransportParams::from(&conf.local_transport_params),
-        )
+            peer_transport_params.max_datagram_frame_size,
+            conf.local_transport_params.max_datagram_frame_size,
+        );
 
         let mut tls_session = conf.new_tls_session(server_name, is_server)?;
         if let Some(tls_config_selector) = &conf.tls_config_selector {
@@ -271,7 +270,7 @@ impl Connection {
             tls_session,
             crypto_streams: Rc::new(RefCell::new(CryptoStreams::new())),
             undecryptable_packets: UndecryptablePackets::new(conf.max_undecryptable_packets),
-            peer_transport_params: TransportParams::default(),
+            peer_transport_params: peer_transport_params.clone(),
             local_transport_params: conf.local_transport_params.clone(),
             recovery_conf: conf.recovery.clone(),
             local_error: None,
