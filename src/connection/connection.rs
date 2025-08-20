@@ -997,8 +997,8 @@ impl Connection {
                 self.streams.on_streams_blocked_frame_received(max, bidi)?;
             }
             Frame::Datagram { length, data } => {
-                self.datagram_map.incoming_datagram(data);
-                //将datagram帧存入接收区
+                self.datagram_map.incoming_datagram(length,data);
+                //push datagram to recv_queue
             }
         }
 
@@ -1267,7 +1267,7 @@ impl Connection {
             .recovery
             .update_max_datagram_size(max_datagram_size, true);
 
-        // setting max_datagram_flame_size
+        // setting peer_max_datagram_flame_size
         self.peer_transport_params.max_datagram_frame_size=peer_params.max_datagram_frame_size;
 
         self.cids.set_scid_limit(peer_params.active_conn_id_limit);
@@ -2667,10 +2667,34 @@ impl Connection {
         {
             return Ok(());
         }
-
-        // let mut remaining_space = out.len();
-        // let mut bytes_written = 0;
-
+        let mut len=0;
+        let mut cap=out.len();
+        let datagram_header=frame::MAX_DATAGRAM_OVERHEAD;
+        while let Some(datagram)=self.datagram_map
+        .outcome_datagram(cap-datagram_header)
+        {
+            //get a datagram ready to send
+            let length=datagram.0;
+            let data=datagram.1;
+            let frame_hdr_len=frame::datagram_header_wire_len(length);
+            frame::encode_datagram_header(
+                length, &mut out[len..len+frame_hdr_len]);
+            let frame_len =frame_hdr_len+data.len();
+            st.written+=frame_len;
+            len+=frame_len;
+            cap-=frame_len;
+            st.ack_eliciting=true;
+            st.in_flight = true;//it need reserch
+            st.has_data = true;
+            st.frames.push(Frame::Datagram { 
+                length: length.clone(),
+                data: data.clone() 
+            });
+            if cap<=frame::MAX_DATAGRAM_OVERHEAD
+            {
+                break;
+            }
+        }
 
         Ok(())
     }
