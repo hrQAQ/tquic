@@ -13,34 +13,57 @@
 // limitations under the License.
 
 use std::collections::VecDeque;
+use crate::connection::datagram;
 use crate::frame;
 use crate::frame::Frame;
 use bytes::Bytes;
 use crate::Error;
 #[derive(Debug, Clone)]
+
+pub struct Datagramunit
+{
+    data:Bytes,
+    length:Option<usize>,
+    datagram_id:usize,
+    /*
+    the time arrive queue
+    the priority
+    the time of datagram become invalid
+     */
+
+}
+impl Datagramunit {
+    pub fn new (data:Bytes,length:Option<usize>,datagram_id:usize)->Self{
+        Self { data:data, length: length, datagram_id: datagram_id }
+    }
+}
 pub struct DatagramMap
 {
     /// Sender states
-    out_queue:VecDeque<(Option<usize>,Bytes)>,
+    out_queue:VecDeque<Datagramunit>,
+    index_out:usize,
     out_total_size:u64,
     out_max_size:u64,
     /// Receiver states
-    in_queue:VecDeque<(Option<usize>,Bytes)>,
+    in_queue:VecDeque<Datagramunit>,
+    index_in:usize,
     in_total_size:u64,    
     in_max_size:u64,
     local_max_datagram_frame_size:u64,
     peer_max_datagram_frame_size:u64,
-}
 
+}
 impl DatagramMap 
 {
     pub fn new(peer_max_datagram_frame_size:u64,
         local_max_datagram_frame_size:u64)->Self{
         Self{
             out_queue:VecDeque::new(),
+            index_out:0,
             out_total_size:0,
             out_max_size:1024*1024,
             in_queue:VecDeque::new(),
+            index_in:0,
             in_total_size:0,
             in_max_size:1024*1024,
             local_max_datagram_frame_size,
@@ -70,7 +93,7 @@ impl DatagramMap
     }
     pub fn change_peer(& mut self,new_size:u64)
     {
-        self.peer_max_data_frame_size=new_size;
+        self.peer_max_datagram_frame_size=new_size;
     }
     pub fn change_local(& mut self,new_size:u64)
     {
@@ -105,7 +128,7 @@ impl DatagramMap
             {
                 while(self.out_total_size+data.len()>self.out_max_size)
                 {
-                    if let Some((length,data))=self.out_queue.pop_front()
+                    if let Some(datagramunit)=self.out_queue.pop_front()
                     {
                         self.out_total_size-=data.len();
                     }else{
@@ -118,59 +141,60 @@ impl DatagramMap
         }
 
         self.out_queue.push_back(
-                (Some(data.len()),// 0x31
-                data.clone())
+            Datagramunit::new(data,Some(data.len()), self.index_out)
             );
         self.out_total_size +=data.len();
+        self.index_out+=1;//change the index
         return Ok(());
     }
     //send a datagram from out_queue 
     pub fn outcome_datagram(&mut self, max_payload_size:usize)->Option<(Option<usize>,Bytes)>{
 
-        let Some((front_data_length,front_data)) = self.out_queue.front() else {
+        let Some(datagramunit) = self.out_queue.front() else {
             return None; // out_queue is empty , no datagram to send 
         };
-        if front_data.len()>max_payload_size 
+        if datagramunit.data.len()>max_payload_size 
         {
             return  None;
         }else{
-            let (length,data)=self.out_queue.pop_front().unwrap();
-            self.out_total_size-=data.len();
+            let datagramunit=self.out_queue.pop_front().unwrap();
+            self.out_total_size-=datagramunit.data.len();
             return Some((data.length, data.clone()));
         }
 
     }
     //recv a datagram from connection to in_queue
-    pub fn incoming_datagram(&mut self,length:Option<usize>, data:Bytes)->Result<()>{
+    pub fn incoming_datagram(&mut self,length:Option<usize>, data:Bytes)->Result<usize>{
         if !self.local_is_enable()
         {
-            return Err(Error::ErrorDatagramTest);
+            return Err(Error:: ProtocolViolation);
         }
         if data.len()>self.in_max_size
         {
-            return Err(Error::ErrorDatagramTest);
+            return Err(Error:: DatagramFrameBeyondMemory);
         }
         if data.len()>self.local_max_datagram_frame_size{
-            return Err(Error::ErrorDatagramTest);
+            return Err(Error:: ProtocolViolation);
         }
         while self.in_total_size+data.len()>self.in_max_size{
-            if let Some((old_data_len,old_data))=self.in_queue.pop_front()
+            if let Some(datagramunit)=self.in_queue.pop_front()
             {
-                self.in_total_size-=old_data.len();
+                self.in_total_size-=datagramunit.data.len();
             }else{
                 break;
             }
         }
-        self.in_queue.push_back((length.clone(),data.clone()));
+        self.in_queue.push_back(Datagramunit::new(data, length, self.index_in));
         self.in_total_size+=data.len();
-        Ok(())
+        self.index_in+=1;
+        Ok(self.index_in-1)
     }
     //从接收队列取出一个帧给引用层
     pub fn get_datagram(&mut self)->Option<(Option<usize>,Bytes)>
     {
-        if let Some((length,data))=self.in_queue.pop_front(){
-            self.in_total_size-=data.len();
-            Some((length,data.clone()))
+        if let Some(datagramunit)=self.in_queue.pop_front(){
+            self.in_total_size-=datagramunit.data.len();
+            Some((datagramunit.length,datagramunit.data.clone()))
         }else{
             None
         }

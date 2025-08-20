@@ -997,11 +997,33 @@ impl Connection {
                 self.streams.on_streams_blocked_frame_received(max, bidi)?;
             }
             Frame::Datagram { length, data } => {
-                self.datagram_map.incoming_datagram(length,data);
+                match self.datagram_map.incoming_datagram(length,data){
+                    Ok(datagram_id)=>
+                    {
+                        self.events.add(Event::DatagramReceived(datagram_id));
+                    }
+                    Err(e @ Error::ProtocolViolation)=>
+                    {
+                        error!("{} Datagram frame that recevived beyond the local limited",self.trace_id);
+                        self.close(false,e.to_wire(), b"DATAGRAM frame beyond the local limited");
+                        return Err(e);
+                    }
+                    Err(e @ Error::DatagramFrameBeyondMemory)=>
+                    {
+                        error!("{} Datagram frame that recevived beyond the local memery",self.trace_id);
+                        self.close(false,e.to_wire(), b"DATAGRAM frame beyond the local memery");
+                        return Err(e);
+                    }
+                    Err(e)=>
+                    {
+                        warn!("{}  unknown error of DATAGRAM frame processing : {:?}", self.trace_id, e);
+                        return Err(e);
+                    }
+
+                }
                 //push datagram to recv_queue
             }
         }
-
         Ok(())
     }
 
@@ -2952,7 +2974,7 @@ impl Connection {
                             .on_stream_frame_lost(stream_id, offset, length, fin);
                     }
                     Frame::Datagram { length, data }=>{
-                        
+
                     }
                     // Cancellation of stream transmission, as carried in a
                     // RESET_STREAM frame, is sent until acknowledged or until

@@ -424,6 +424,17 @@ impl TransportParams {
             buf.write_varint(0)?;
         }
 
+        // no matter what, always encode max_datagram_frame_size
+        buf.write_varint(0x0020)?;
+        buf.write_varint(codec::encode_varint_len(tp.max_datagram_frame_size) as u64)?;
+        buf.write_varint(tp.max_datagram_frame_size)?;
+        /*  if tp.max_datagram_frame_size!=0
+        {
+            buf.write_varint(0x0020)?;
+            buf.write_varint(codec::encode_varint_len(tp.max_datagram_frame_size) as u64)?;
+            buf.write_varint(tp.max_datagram_frame_size)?;
+        }*/
+
         Ok(len - buf.len())
     }
 
@@ -458,7 +469,7 @@ impl TransportParams {
             initial_max_streams_bidi: Some(self.initial_max_streams_bidi),
             initial_max_streams_uni: Some(self.initial_max_streams_uni),
             preferred_address: None,
-            max_datagram_frame_size: Some(self.max_datagram_frame_size as u32),
+            max_datagram_frame_size: Some(self.max_datagram_frame_size as u64),
             grease_quic_bit: None,
         }
     }

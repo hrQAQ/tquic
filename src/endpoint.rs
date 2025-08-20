@@ -34,6 +34,7 @@ use rustc_hash::FxHashMap;
 use rustc_hash::FxHashSet;
 use slab::Slab;
 
+use crate::connection::datagram;
 use crate::connection::Connection;
 use crate::error::Error;
 use crate::packet;
@@ -579,6 +580,25 @@ impl Endpoint {
                 Event::StreamClosed(stream_id) => {
                     self.handler.on_stream_closed(conn, stream_id);
                     conn.stream_destroy(stream_id);
+                }
+                Event::DatagramAcked(datagram_id)=>{
+
+                }
+                Event::DatagramLost(datagram_id)=>
+                {
+
+                }
+                Event::DatagramDrop(datagram_id)=>
+                {
+
+                }
+                Event::DatagramReceived(datagram_id)=>
+                {
+
+                }
+                Event::Datagramlongtime(datagram_id)=>
+                {
+
                 }
             }
             if conn.is_closed() {
@@ -1831,6 +1851,25 @@ mod tests {
         fn on_new_token(&mut self, conn: &mut Connection, token: Vec<u8>) {
             self.token = Some(token);
         }
+
+        fn on_datagram_acked(&mut self,conn:& mut connection) {
+            
+        }
+        fn on_datagram_drop(&mut self,conn: &mut Connection) {
+            
+        }
+        fn on_datagram_longtime(&mut self,conn: &mut Connection) {
+            
+        }
+        fn on_datagram_losted(&mut self,conn:&mut connection) {
+            
+        }
+        fn on_datagram_received(&mut self,conn:& mut connection) {
+            
+        }
+        fn on_datagram_recvived(&mut self ,conn:& mut connection) {
+            
+        }
     }
 
     struct ServerStreamContext {
@@ -1912,6 +1951,24 @@ mod tests {
         }
 
         fn on_new_token(&mut self, conn: &mut Connection, token: Vec<u8>) {}
+        fn on_datagram_acked(&mut self,conn:& mut connection) {
+            
+        }
+        fn on_datagram_drop(&mut self,conn: &mut Connection) {
+            
+        }
+        fn on_datagram_longtime(&mut self,conn: &mut Connection) {
+            
+        }
+        fn on_datagram_losted(&mut self,conn:&mut connection) {
+            
+        }
+        fn on_datagram_received(&mut self,conn:& mut connection) {
+            
+        }
+        fn on_datagram_recvived(&mut self ,conn:& mut connection) {
+            
+        }
     }
 
     // Test Initial packet
