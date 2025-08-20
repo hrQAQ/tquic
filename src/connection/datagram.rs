@@ -1,28 +1,40 @@
-
+// Copyright (c) 2023 The TQUIC Authors.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 use crate::frame::Frame;
 use bytes::Bytes;
 #[derive(Debug, Clone)]
 pub struct DatagramMap
 {
-    ///发送datagram帧时，存储各个dadagram帧数据
+    /// Sender states
     out_queue:VecDeque<Frame::Datagram>,
     out_total_size:u64,
     out_max_size:u64,
-    ///接受datagram帧时，存储各个datagram帧的数据
+    /// Receiver states
     in_queue:VecDeque<Frame::Datagram>,
     in_total_size:u64,    
     in_max_size:u64,
-    max_datagram_frame_size:u64,
-
+    local_max_datagram_frame_size:u64,
+    peer_max_datagram_frame_size:u64,
 }
-#[derive(Debug)]
+
 impl DatagramMap 
 {
     pub fn new(max_datagram_frame_size:u64)->Self{
         Self{
             out_queue:Vec::new(),
-            out_total_size:0,///默认不超过1MB
+            out_total_size:0,
             out_max_size:1024*1024,
             in_queue:Vec::new(),
             in_total_size:0,
@@ -30,7 +42,7 @@ impl DatagramMap
             max_datagram_frame_size:max_datagram_frame_size,
         }
     }
-    pub fn is_enable(&self)->bool//验证是否可发送
+    pub fn is_enable(&self)->bool
     {
         if self.max_datagram_frame_size>0
         {
@@ -40,7 +52,7 @@ impl DatagramMap
             return false
         }
     }
-    pub fn change_mdfs(& mut self,new_size:u32)//修改
+    pub fn change_mdfs(& mut self,new_size:u32)
     {
         self.max_data_frame_size=new_size;
     }
@@ -56,11 +68,11 @@ impl DatagramMap
         let peer_limit=current_mtu.saturating_sub(frame_overhead);
         Some(mtu_limit.min(peer_limit))
     }
-    pub fn send_datagram(&mut self,data: Bytes,drop_if:bool)->Result<()>//从本地向发送队列添加一个帧
+    pub fn send_datagram(&mut self,data: Bytes,drop_if:bool)->Result<()>
     {
         if !self.is_enable()
         {
-            return Err();///略去错误处理
+            return Err();
         }
 
         if self.out_total_size+data.len()>self.out_max_size
@@ -77,7 +89,7 @@ impl DatagramMap
                     }
                 }
             }else{
-                return Err();///略去错误处理
+                return Err();
             }
         }
 
@@ -88,7 +100,7 @@ impl DatagramMap
         self.out_total_size+=data.len();
         return Ok(());
     }
-    pub fn outcome_datagram(&mut self,max_payload_size: usize)->Option<Frame>{//向对方从发送队列发送一个帧
+    pub fn outcome_datagram(&mut self,max_payload_size: usize)->Option<Frame>{
         while let Some(data)=self.out_queue.get(0)
         {
             if data.length<max_payload_size && data.data.len()<max_payload_size
@@ -97,7 +109,6 @@ impl DatagramMap
                 self.out_total_size-=data.data.len();
                 return Some(Frame::datagram{data.has_length,data.length,data.data});
             }else{
-                ///丢弃
                 let data =self.out_queue.pop_front().unwrap();
                 self.out_total_size-=data.data.len();
             }
@@ -105,10 +116,10 @@ impl DatagramMap
         None
     }
 
-    pub fn income_datagram(&mut self, data:Bytes)->Result<()>{///从对方向接受队列添加一个帧
+    pub fn income_datagram(&mut self, data:Bytes)->Result<()>{
         if !self.is_enable()
         {
-            return Err();///略去错误处理
+            return Err();
         }
         if let Some(max_size)=self.max_datagram_frame_size{
             if data.len()>max_size{
@@ -128,7 +139,7 @@ impl DatagramMap
         self.in_total_size+=data.len();
         Ok(())
     }
-    pub fn get_datagram(&mut self)->Option<Frame::datagram>///本地从接受队列获得一个帧
+    pub fn get_datagram(&mut self)->Option<Frame::datagram>
     {
         if let Some(data)=self.in_queue.pop_front(){
             self.in_total_size-=data.len();
@@ -138,19 +149,19 @@ impl DatagramMap
         }
     }
 
-    pub fn send_available_space(&self)->usize//发送队列的可用空间
+    pub fn send_available_space(&self)->usize
     {
         self.out_max_size.saturating_sub(self.out_total_size)
     }
-    pub fn recv_available_space(&self)->usize//接受队列的可用空间
+    pub fn recv_available_space(&self)->usize
     {
         self.in_max_size.saturating_sub(self.in_total_size)
     }
-    pub fn if_out_empty(&self)->bool///发送队列是否为空
+    pub fn if_out_empty(&self)->bool
     {
         self.out_queue.is_empty();
     }
-    pub fn if_in_empty(&self)->bool///接受队列是否为空
+    pub fn if_in_empty(&self)->bool
     {
         self.in_queue.is_empty();
     }

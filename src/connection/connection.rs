@@ -105,6 +105,9 @@ pub struct Connection {
     /// The stream manager.
     streams: stream::StreamMap,
 
+    /// The datagram manager.
+    datagram_map: datagram::DatagramMap,
+
     /// TLS session.
     tls_session: TlsSession,
 
@@ -242,6 +245,13 @@ impl Connection {
         );
         streams.set_trace_id(&trace_id);
 
+        let mut datagram_map = datagram::DatagramMap::new(
+            is_server,
+            conf.max_connection_window,
+            conf.max_datagram_size,
+            stream::StreamTransportParams::from(&conf.local_transport_params),
+        )
+
         let mut tls_session = conf.new_tls_session(server_name, is_server)?;
         if let Some(tls_config_selector) = &conf.tls_config_selector {
             tls_session.set_config_selector(tls_config_selector.clone());
@@ -257,6 +267,7 @@ impl Connection {
             multipath_scheduler: None,
             multipath_conf: conf.multipath.clone(),
             streams,
+            datagram_map,
             tls_session,
             crypto_streams: Rc::new(RefCell::new(CryptoStreams::new())),
             undecryptable_packets: UndecryptablePackets::new(conf.max_undecryptable_packets),
@@ -613,22 +624,19 @@ impl Connection {
 
         while !payload.is_empty() {
             let (frame, len) = Frame::from_bytes(&mut payload, hdr.pkt_type)?;
-            /// 这里开始读取数据包中的帧，应从这里开始修改，使之支持datagream
+            // read frames from packet
             if frame.ack_eliciting() {
                 ack_eliciting_pkt = true;
-                ///不修改，datagram不在排除范围之外，标记为触发ack
             }
             if !frame.probing() {
                 probing_pkt = false;
-                ///不修改，datagram在排除范围之外，标记非探测帧
             }
             #[cfg(feature = "qlog")]
             if self.qlog.is_some() {
-                qframes.push(frame.to_qlog());///将datagram帧在记录日志时定义为unknown
+                qframes.push(frame.to_qlog());
             }
-
+            // recv_frame process the frame
             self.recv_frame(frame, &hdr, pid, space_id, info.time)?;
-            ///这里应该是对帧的处理，从这里入手
             let _ = payload.split_to(len);
         }
 
@@ -756,7 +764,7 @@ impl Connection {
                 // Process acknowledgement
                 let handshake_status = self.handshake_status();
                 let path = self.paths.get_mut(path_id)?;
-                ///on_acl_received可能涉及对datagram的处理
+
                 let (lost_pkts, lost_bytes) = path.recovery.on_ack_received(
                     &ack_ranges,
                     ack_delay,
@@ -988,11 +996,8 @@ impl Connection {
             Frame::StreamsBlocked { bidi, max } => {
                 self.streams.on_streams_blocked_frame_received(max, bidi)?;
             }
-            Frame::Datagram {  data }=>
-            {
-                ///这里需要添加收到datagram帧后的处理，需要通知应用层收到数据包，触发event事件
-                /// 更新datagram的统计信息
-                /// 不需要流控，不需要重传，已经标记为返回ack
+            Frame::Datagram { length, data } => {
+                // self.events.add(Event::DatagramReceived { length, data });
             }
         }
 
@@ -1205,8 +1210,7 @@ impl Connection {
             }
         }
 
-        ///这里是处理传输参数的，要不要增加对max_datagram_flame_size的处理呢？
-        /// 
+        // here process the transmission args e.g.max_datagram_flame_size
 
 
         // The remote server can issue a stateless_reset_token transport parameter
@@ -1262,7 +1266,7 @@ impl Connection {
             .recovery
             .update_max_datagram_size(max_datagram_size, true);
 
-        /// 设置max_datagram_flame_size
+        // setting max_datagram_flame_size
         self.peer_transport_params.max_datagram_frame_size=peer_params.max_datagram_frame_size;
 
         self.cids.set_scid_limit(peer_params.active_conn_id_limit);
@@ -1508,11 +1512,12 @@ impl Connection {
                             debug!("{} path {:?} MTU is {} now", self.trace_id, path, current);
                         }
                     }
-                    Frame::Datagram { data 
-                    }=>{
-                        ///1通知应用层datagram已经被ack
-                        /// 2可能的对datagram的统计
-                        /// 3qlog记录datagram的确认
+                    Frame::Datagram { 
+                        length, data 
+                    } => {
+                        // 1.inform application layer datagram has been ack
+                        // 2.datagram statistic
+                        // 3.qlog recorder
                     }
                     _ => (),
                 }
@@ -1540,9 +1545,7 @@ impl Connection {
     }
 
     /// Get the maximum datagram size of the given path.
-    /// 这里是用于计算UDP路线上的最大载荷，如果直接将max_datagram_flame_size加在这里，将会导致
-    /// 当max_datagram_flame_size为0，只是不传输datagram帧，却影响了其他帧的传输
-    /// 故此次不能使用max_datagram_flame_size，应在datagram发送和接受时单独进行限制
+    /// calculate max UDP payload
     pub(crate) fn max_datagram_size(&self, pid: usize) -> usize {
         // The peer's `max_udp_payload_size` transport parameter limits the
         // size of UDP payloads that it is willing to receive. Therefore,
@@ -1784,7 +1787,7 @@ impl Connection {
             overhead: total_overhead,
             ..FrameWriteStatus::default()
         };
-        ///这里开始向包中写入不同的帧了，需要在send_flame中新增对datagram帧的处理
+        // send packet with different frames
         match self.send_frames(
             &mut out[payload_offset..],
             left,
@@ -2032,13 +2035,11 @@ impl Connection {
         // Write buffered frames
         self.try_write_buffered_frames(out, st, pkt_type, path_id)?;
 
+        // Write DATAGRAM frames
+        self.try_write_datagram_frames(out, st, pkt_type, path_id)?;
+
         // Write STREAM frames
         self.try_write_stream_frames(out, st, pkt_type, path_id)?;
-
-        ///在stream帧后写入datagram?,如果max参数为0就不写入，省去了0rtt与1rtt的区分？
-        /// 将这一步分移入try_write_datagram_frames实现了
-  
-        self.try_write_datagram_frames(out, st, pkt_type, path_id)?;
  
         // Write a NEW_TOKEN frame
         self.try_write_new_token_frame(out, st, pkt_type, path_id)?;
@@ -2658,19 +2659,21 @@ impl Connection {
         path_id: usize,
     )->Result<()>{
         let out=&mut out[st.written..];
-        if self.is_closing()//检查流的状态
-            || out.len()<= frame::MAX_DATAGRAM_OVERHEAD//检查剩余空间是否满足datagram帧的最小值，定义为1
-            || !self.paths.get(path_id)?.active()//检查路径是否活跃
-            || self.peer_transport_params.max_datagram_frame_size==0//若对端声明窗口大小为0
+        if self.is_closing()
+            || out.len()<= frame::MAX_DATAGRAM_OVERHEAD
+            || !self.paths.get(path_id)?.active()
+            || self.peer_transport_params.max_datagram_frame_size==0
         {
             return Ok(());
         }
 
-        let mut remaining_space=out.len();
-        let mut bytes_written=0;
-        
+        // let mut remaining_space = out.len();
+        // let mut bytes_written = 0;
 
+
+        Ok(())
     }
+
     /// Populate NewToken frame to packet payload buffer.
     fn try_write_new_token_frame(
         &mut self,
@@ -8009,4 +8012,5 @@ mod recovery;
 pub(crate) mod rtt;
 pub(crate) mod space;
 pub(crate) mod stream;
+pub(crate) mod datagram;
 pub(crate) mod timer;
