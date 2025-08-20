@@ -38,7 +38,7 @@ use self::space::PacketNumSpace;
 use self::space::RateSamplePacketState;
 use self::space::SpaceId;
 use self::stream::Stream;
-use self::datagram::DatagramMap;
+// use self::datagram::DatagramMap;
 use self::stream::StreamIter;
 use self::timer::Timer;
 use self::ConnectionFlags::*;
@@ -105,8 +105,8 @@ pub struct Connection {
     /// The stream manager.
     streams: stream::StreamMap,
 
-    /// The datagram manager.
-    datagram_map: datagram::DatagramMap,
+    //  The datagram manager.
+    // datagram_map: datagram::DatagramMap,
 
     /// TLS session.
     tls_session: TlsSession,
@@ -251,6 +251,7 @@ impl Connection {
             conf.local_transport_params.max_datagram_frame_size,
         );
 
+
         let mut tls_session = conf.new_tls_session(server_name, is_server)?;
         if let Some(tls_config_selector) = &conf.tls_config_selector {
             tls_session.set_config_selector(tls_config_selector.clone());
@@ -266,7 +267,7 @@ impl Connection {
             multipath_scheduler: None,
             multipath_conf: conf.multipath.clone(),
             streams,
-            datagram_map,
+            // datagram_map,
             tls_session,
             crypto_streams: Rc::new(RefCell::new(CryptoStreams::new())),
             undecryptable_packets: UndecryptablePackets::new(conf.max_undecryptable_packets),
@@ -8011,5 +8012,5 @@ mod recovery;
 pub(crate) mod rtt;
 pub(crate) mod space;
 pub(crate) mod stream;
-pub(crate) mod datagram;
+// pub(crate) mod datagram;
 pub(crate) mod timer;
