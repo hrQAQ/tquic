@@ -125,7 +125,7 @@ impl DatagramMap
         return Ok(());
     }
     //send a datagram from out_queue 
-    pub fn outcome_datagram(&mut self, max_payload_size:usize)->Option<Frame>{
+    pub fn outcome_datagram(&mut self, max_payload_size:usize)->Option<(Option<usize>,Bytes)>{
 
         let Some((front_data_length,front_data)) = self.out_queue.front() else {
             return None; // out_queue is empty , no datagram to send 
@@ -136,7 +136,7 @@ impl DatagramMap
         }else{
             let (length,data)=self.out_queue.pop_front().unwrap();
             self.out_total_size-=data.len();
-            return Some(Frame::Datagram { length: data.length, data: data.clone() });
+            return Some((data.length, data.clone()));
         }
 
     }

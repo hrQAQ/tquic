@@ -18,6 +18,7 @@ use crate::codec;
 use crate::codec::Decoder;
 use crate::codec::Encoder;
 use crate::error::Error;
+use crate::frame;
 use crate::packet::PacketType;
 #[cfg(feature = "qlog")]
 use crate::qlog;
@@ -1252,6 +1253,21 @@ pub fn encode_stream_header(
     b.write_varint_with_len(length, 2)?;
 
     Ok(len - b.len())
+}
+pub fn encode_datagram_header(
+    length:Option<usize>,
+    mut b:&mut [u8])->Result<usize>{
+    let len=b.len();
+    let mut frame_type:u8 =0b00110000;
+    if length
+    {
+        frame_type+=1;
+        b.write_varint(u64::from(frame_type))?;
+        b.write_varint(length.unwrap())?;
+    }else{
+        b.write_varint(u64::from(frame_type))?;
+        b.write_varint(0u64)?;
+    }
 }
 
 /// The ACK frame uses the least significant bit of the type value (type 0x03)

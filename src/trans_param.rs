@@ -123,10 +123,9 @@ pub struct TransportParams {
     pub disable_encryption: bool,
 
     /// max_data_frame_size is used to inform the peer of the maximum length of
-    /// datagram frames that can be sent. The default value is 65535. In 0-RTT
-    /// mode, the previous session needs to be read to know whether a non-zero
-    /// value of this parameter has been received or used. When this parameter
-    /// is 0, it indicates that datagram frames are not supported.
+    /// datagram frames that can be sent. The default value is 65535. When this
+    /// parameter is 0, it indicates that datagram frames are not supported.
+    /// See RFC 9221.
     pub max_datagram_frame_size: u64,
 }
 
@@ -653,7 +652,7 @@ mod tests {
             retry_source_connection_id: Some(ConnectionId::random()),
             enable_multipath: false,
             disable_encryption: true,
-            max_datagram_frame_size: 65535,
+            max_datagram_frame_size: 0,
         };
 
         // encode on the server side
