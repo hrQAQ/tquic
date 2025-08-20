@@ -930,6 +930,16 @@ enum Event {
 
     /// The stream is closed.
     StreamClosed(u64),
+
+    DatagramReceived(u64),
+
+    DatagramAcked(u64),
+
+    DatagramLost(u64),
+
+    DatagramDrop(u64),
+
+    Datagramlongtime(u64),
 }
 
 #[derive(Default)]
@@ -1030,6 +1040,18 @@ pub trait TransportHandler {
 
     /// Called when client receives a token in NEW_TOKEN frame.
     fn on_new_token(&mut self, conn: &mut Connection, token: Vec<u8>);
+
+    fn on_datagram_received(&mut self,conn:& mut connection);
+
+    fn on_datagram_acked(&mut self,conn:& mut connection);
+
+    fn on_datagram_losted(&mut self,conn:&mut connection);
+
+    fn on_datagram_recvived(&mut self ,conn:& mut connection);
+
+    fn on_datagram_drop(&mut self,conn: &mut Connection);
+
+    fn on_datagram_longtime(&mut self,conn: &mut Connection);
 }
 
 /// The PacketSendHandler lists the callbacks used by the endpoint to

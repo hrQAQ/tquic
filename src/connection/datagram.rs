@@ -161,7 +161,7 @@ impl DatagramMap
                 break;
             }
         }
-        self.in_queue.push_back((length,data.clone()));
+        self.in_queue.push_back((length.clone(),data.clone()));
         self.in_total_size+=data.len();
         Ok(())
     }

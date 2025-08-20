@@ -2951,7 +2951,9 @@ impl Connection {
                         self.streams
                             .on_stream_frame_lost(stream_id, offset, length, fin);
                     }
-
+                    Frame::Datagram { length, data }=>{
+                        
+                    }
                     // Cancellation of stream transmission, as carried in a
                     // RESET_STREAM frame, is sent until acknowledged or until
                     // all stream data is acknowledged by the peer.
