@@ -220,7 +220,7 @@ pub enum EventData {
         initial_max_streams_bidi: Option<u64>,
         initial_max_streams_uni: Option<u64>,
         preferred_address: Option<PreferredAddress>,
-        max_datagram_frame_size: Option<u64>,
+        max_datagram_frame_size: Option<u32>,
         grease_quic_bit: Option<bool>,
     },
 

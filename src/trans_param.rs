@@ -125,7 +125,7 @@ pub struct TransportParams {
     /// max_data_frame_size is used to inform the peer of the maximum length of
     /// datagram frames that can be sent. The default value is 65535. In 0-RTT
     /// mode, the previous session needs to be read to know whether a non-zero
-    /// value of this parameter has been received or used. When this parameter 
+    /// value of this parameter has been received or used. When this parameter
     /// is 0, it indicates that datagram frames are not supported.
     pub max_datagram_frame_size: u64,
 }
@@ -265,6 +265,14 @@ impl TransportParams {
                     tp.retry_source_connection_id = Some(ConnectionId::new(val));
                 }
 
+                0x0020 => {
+                    let max_datagram_frame_size = val.read_varint()?;
+                    if max_datagram_frame_size < 0 || max_datagram_frame_size > 65535 {
+                        return Err(Error::TransportParameterError);
+                    }
+                    tp.max_datagram_frame_size = max_datagram_frame_size;
+                }
+
                 0x0f739bbc1b666d05 => {
                     tp.enable_multipath = true;
                 }
@@ -401,6 +409,12 @@ impl TransportParams {
             }
         }
 
+        if tp.max_datagram_frame_size != 0 {
+            buf.write_varint(0x0020)?;
+            buf.write_varint(codec::encode_varint_len(tp.max_datagram_frame_size) as u64)?;
+            buf.write_varint(tp.max_datagram_frame_size)?;
+        }
+
         if tp.enable_multipath {
             buf.write_varint(0x0f739bbc1b666d05)?;
             buf.write_varint(0)?;
@@ -445,7 +459,7 @@ impl TransportParams {
             initial_max_streams_bidi: Some(self.initial_max_streams_bidi),
             initial_max_streams_uni: Some(self.initial_max_streams_uni),
             preferred_address: None,
-            max_datagram_frame_size: None,
+            max_datagram_frame_size: Some(self.max_datagram_frame_size as u32),
             grease_quic_bit: None,
         }
     }
@@ -491,7 +505,9 @@ impl Default for TransportParams {
             enable_multipath: false,
             disable_encryption: false,
 
-            max_datagram_frame_size: 65535,
+            // The default for this parameter is 0, which indicates that 
+            // the endpoint does not support DATAGRAM frames. 
+            max_datagram_frame_size: 0,            
         }
     }
 }
@@ -592,7 +608,7 @@ mod tests {
             retry_source_connection_id: None,
             enable_multipath: true,
             disable_encryption: false,
-            max_datagram_frame_size:65535,
+            max_datagram_frame_size: 65535,
         };
 
         // encode on the client side
@@ -637,7 +653,7 @@ mod tests {
             retry_source_connection_id: Some(ConnectionId::random()),
             enable_multipath: false,
             disable_encryption: true,
-            max_datagram_frame_size:65535, 
+            max_datagram_frame_size: 65535,
         };
 
         // encode on the server side
