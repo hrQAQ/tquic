@@ -1290,7 +1290,16 @@ impl Connection {
             .update_max_datagram_size(max_datagram_size, true);
 
         // setting peer_max_datagram_flame_size
-        self.peer_transport_params.max_datagram_frame_size=peer_params.max_datagram_frame_size;
+        if peer_params.max_datagram_frame_size>=self.peer_transport_params.max_datagram_frame_size
+        {
+            self.peer_transport_params.max_datagram_frame_size=peer_params.max_datagram_frame_size;
+            debug!("{} update peer max frame size: {} bytes",
+                self.trace_id, peer_params.max_datagram_frame_size);
+        }else{
+            // error
+            error!("{} peer's max_datagram_frame_size lower then old_size",self.trace_id);
+            return Err(Error::ProtocolViolation);
+        }
 
         self.cids.set_scid_limit(peer_params.active_conn_id_limit);
 
@@ -1538,6 +1547,11 @@ impl Connection {
                     Frame::Datagram { 
                         length, data 
                     } => {
+                        debug!(
+                            "{} the datagram has been acked, len: {:?}, data: {:?}",
+                            self.trace_id, data.len(), data,
+                        );
+                        self.events.add(Event::DatagramAcked(0));
                         // 1.inform application layer datagram has been ack
                         // 2.datagram statistic
                         // 3.qlog recorder

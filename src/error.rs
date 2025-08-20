@@ -155,9 +155,7 @@ pub enum Error {
     //add test error of datagram
     ErrorDatagramTest,
 
-    // 
-    ProtocolViolation,
-
+    //
     DatagramFrameBeyondMemory,
 
 
@@ -227,8 +225,7 @@ impl Error {
             Error::StreamReset(_) => -111,
             Error::IoError(_) => -112,
             Error::ErrorDatagramTest=>-113,
-            Error::ProtocolViolation=>-114,
-            Error::DatagramFrameBeyondMemory=>-115,
+            Error::DatagramFrameBeyondMemory=>-114,
         }
     }
 }
