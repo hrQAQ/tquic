@@ -1190,8 +1190,6 @@ impl Connection {
                 self.flags.insert(HandshakeConfirmed);
                 self.flags.insert(NeedSendHandshakeDone);
 
-                // An endpoint MUST discard its Handshake keys when the TLS
-                // handshake is confirmed.
                 self.drop_space_state(SpaceId::Handshake, time::Instant::now());
             }
 
@@ -1218,7 +1216,7 @@ impl Connection {
 
         Ok(())
     }
-    //这里可能需要处理max_datagram_frame_size
+    //杩欓噷鍙兘闇�瑕佸鐞唌ax_datagram_frame_size
     /// Validate and apply transport parameters advertised by the peer.
     fn process_peer_trans_params(&mut self, peer_params: TransportParams) -> Result<()> {
         // Validate cid related transport parameters
@@ -4167,9 +4165,9 @@ impl Connection {
         }
     }
     //get a datagram that recv
-    pub fn datagram_recv(&mut self)->Some<Bytes>
+    pub fn datagram_recv(&mut self)->Option<Bytes>
     {
-        if Some((length,data))=self.datagram_map.get_datagram()
+        if let Some((length,data))=self.datagram_map.get_datagram()
         {
             return Some(data);
         }else{

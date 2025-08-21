@@ -112,27 +112,27 @@ impl DatagramMap
         Some(mtu_limit.min(peer_limit))
     }
     //send a datagram from application to out_queue
-    pub fn send_datagram(&mut self,data: Bytes,length:Option<usize>,drop_if:bool)->Result<u64>
+    pub fn send_datagram(&mut self,data: Bytes,length:Option<usize>,drop_if:bool)->Result<u64,Error>
     {
         if !self.peer_is_enable()
         {
             return Err(Error::ProtocolViolation);
         }
-        if self.out_max_size<data.len()
+        if self.out_max_size<data.len() as u64
         {
             return Err(Error::DatagramFrameBeyondMemory);//data > out_queue
         }
         let mut drop_num:u64=0;
-        if self.out_total_size+data.len()>self.out_max_size
+        if self.out_total_size+ data.len() as u64>self.out_max_size
         {
             if drop_if
             {
-                while(self.out_total_size+data.len()>self.out_max_size)
+                while(self.out_total_size+(data.len() as u64)>self.out_max_size)
                 {
                     if let Some(datagramunit)=self.out_queue.pop_front()
                     {
                         drop_num+=1;
-                        self.out_total_size-=data.len();
+                        self.out_total_size-=(data.len() as u64);
                     }else{
                         break;
                     }
@@ -143,9 +143,9 @@ impl DatagramMap
         }
 
         self.out_queue.push_back(
-            Datagramunit::new(data,Some(data.len()), self.index_out)
+            Datagramunit::new(data.clone(),Some(data.len()), self.index_out)
             );
-        self.out_total_size +=data.len();
+        self.out_total_size +=data.len() as u64;
         self.index_out+=1;//change the index
         return Ok(drop_num.clone());
     }
@@ -160,34 +160,34 @@ impl DatagramMap
             return  None;
         }else{
             let datagramunit=self.out_queue.pop_front().unwrap();
-            self.out_total_size-=datagramunit.data.len();
-            return Some((datagramunit.data.length, datagramunit.data.clone()));
+            self.out_total_size-=datagramunit.data.len() as u64;
+            return Some((Some(datagramunit.data.len()), datagramunit.data.clone()));
         }
 
     }
     //recv a datagram from connection to in_queue
-    pub fn incoming_datagram(&mut self,length:Option<usize>, data:Bytes)->Result<usize>{
+    pub fn incoming_datagram(&mut self,length:Option<usize>, data:Bytes)->Result<usize,Error>{
         if !self.local_is_enable()
         {
             return Err(Error:: ProtocolViolation);
         }
-        if data.len()>self.in_max_size
+        if data.len() as u64 >self.in_max_size
         {
             return Err(Error:: DatagramFrameBeyondMemory);
         }
-        if data.len()>self.local_max_datagram_frame_size{
+        if data.len() as u64>self.local_max_datagram_frame_size{
             return Err(Error:: ProtocolViolation);
         }
-        while self.in_total_size+data.len()>self.in_max_size{
+        while self.in_total_size+data.len() as u64>self.in_max_size{
             if let Some(datagramunit)=self.in_queue.pop_front()
             {
-                self.in_total_size-=datagramunit.data.len();
+                self.in_total_size-=datagramunit.data.len() as u64;
             }else{
                 break;
             }
         }
-        self.in_queue.push_back(Datagramunit::new(data, length, self.index_in));
-        self.in_total_size+=data.len();
+        self.in_queue.push_back(Datagramunit::new(data.clone(), length, self.index_in));
+        self.in_total_size+=data.len() as u64;
         self.index_in+=1;
         Ok(self.index_in-1)
     }
@@ -195,7 +195,7 @@ impl DatagramMap
     pub fn get_datagram(&mut self)->Option<(Option<usize>,Bytes)>
     {
         if let Some(datagramunit)=self.in_queue.pop_front(){
-            self.in_total_size-=datagramunit.data.len();
+            self.in_total_size-=datagramunit.data.len() as u64;
             Some((datagramunit.length,datagramunit.data.clone()))
         }else{
             None
@@ -204,19 +204,19 @@ impl DatagramMap
 
     pub fn send_available_space(&self)->usize
     {
-        self.out_max_size.saturating_sub(self.out_total_size)
+        self.out_max_size.saturating_sub(self.out_total_size) as usize
     }
     pub fn recv_available_space(&self)->usize
     {
-        self.in_max_size.saturating_sub(self.in_total_size)
+        self.in_max_size.saturating_sub(self.in_total_size) as usize
     }
     pub fn if_out_empty(&self)->bool
     {
-        self.out_queue.is_empty();
+        self.out_queue.is_empty()
     }
     pub fn if_in_empty(&self)->bool
     {
-        self.in_queue.is_empty();
+        self.in_queue.is_empty()
     }
     pub fn need_send_datagram_frames(&self)->bool
     {

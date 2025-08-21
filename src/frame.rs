@@ -1224,10 +1224,10 @@ pub fn stream_header_wire_len(stream_id: u64, offset: u64) -> usize {
 }
 
 /// Return the encoded length of DATAGRAM frame header.
-pub fn datagram_header_wire_len(length: Option<u64>) -> usize {
+pub fn datagram_header_wire_len(length: Option<usize>) -> usize {
     // Note: datagram_header encode length field in varint bytes.
     let length_len = match length {
-        Some(l) => codec::encode_varint_len(l),
+        Some(l) => codec::encode_varint_len(l as u64),
         None => 0,
     };
     1 + length_len
@@ -1259,10 +1259,10 @@ pub fn encode_datagram_header(
     mut b:&mut [u8])->Result<usize>{
     let len=b.len();
     let frame_type: u8 = if length.is_some() { 0x31 } else { 0x30 };
-    if Some(l)=length
+    if let Some(l)=length
     {
         b.write_varint(u64::from(frame_type))?;
-        b.write_varint(*l as u64)?;
+        b.write_varint(l as u64)?;
     }else{
         b.write_varint(u64::from(frame_type))?;
     }

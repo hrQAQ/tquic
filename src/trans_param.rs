@@ -266,9 +266,9 @@ impl TransportParams {
 
                 0x0020 => {
                     let max_datagram_frame_size = val.read_varint()?;
-                    if max_datagram_frame_size < 0 /*|| max_datagram_frame_size > 65535*/{
+                    /*if max_datagram_frame_size < 0 /*|| max_datagram_frame_size > 65535*/{
                         return Err(Error::TransportParameterError);
-                    }
+                    }*/
                     tp.max_datagram_frame_size = max_datagram_frame_size;
                 }
 
@@ -469,7 +469,7 @@ impl TransportParams {
             initial_max_streams_bidi: Some(self.initial_max_streams_bidi),
             initial_max_streams_uni: Some(self.initial_max_streams_uni),
             preferred_address: None,
-            max_datagram_frame_size: Some(self.max_datagram_frame_size as u64),
+            max_datagram_frame_size: Some(self.max_datagram_frame_size ),
             grease_quic_bit: None,
         }
     }

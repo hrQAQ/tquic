@@ -781,15 +781,11 @@ impl Config {
         }
     }
 
-    pub fn set_local_max_datagram_frame_size(&self,max_datagram_frame_size:usize)->Result<()>
+    pub fn set_local_max_datagram_frame_size(& mut self,max_datagram_frame_size:u64)->Result<()>
     {
-        if max_datagram_frame_size>=0
-        {
-            self.local_transport_params.max_datagram_frame_size=max_datagram_frame_size;
-            return Ok(());
-        }else{
-            return Err(Error::ProtocolViolation);
-        }
+
+        self.local_transport_params.max_datagram_frame_size=max_datagram_frame_size;
+        return Ok(());
     }
 }
 
