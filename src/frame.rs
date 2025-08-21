@@ -1259,10 +1259,10 @@ pub fn encode_datagram_header(
     mut b:&mut [u8])->Result<usize>{
     let len=b.len();
     let frame_type: u8 = if length.is_some() { 0x31 } else { 0x30 };
-    if Some(len)=length
+    if Some(l)=length
     {
         b.write_varint(u64::from(frame_type))?;
-        b.write_varint(*len as u64)?;
+        b.write_varint(*l as u64)?;
     }else{
         b.write_varint(u64::from(frame_type))?;
     }

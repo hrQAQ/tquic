@@ -582,23 +582,23 @@ impl Endpoint {
                     conn.stream_destroy(stream_id);
                 }
                 Event::DatagramAcked()=>{
-
+                    self.handler.on_datagram_acked(conn);
                 }
                 Event::DatagramLost()=>
                 {
-
+                    self.handler.on_datagram_losted(conn);
                 }
-                Event::DatagramDrop()=>
+                Event::DatagramDrop(drop_num)=>
                 {
-
+                    self.handler.on_datagram_drop(conn);
                 }
                 Event::DatagramReceived()=>
                 {
-
+                    self.handler.on_datagram_recvived(conn);
                 }
                 Event::Datagramlongtime()=>
                 {
-
+                    self.handler.on_datagram_longtime(conn);
                 }
             }
             if conn.is_closed() {

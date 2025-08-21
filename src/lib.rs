@@ -949,7 +949,7 @@ enum Event {
 
     DatagramLost(),
 
-    DatagramDrop(),
+    DatagramDrop(u64),
 
     Datagramlongtime(),
 }

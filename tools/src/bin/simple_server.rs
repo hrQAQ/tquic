@@ -122,7 +122,7 @@ impl Server {
         })
     }
 
-    fn process_read_event(&mut self, event: &Event) -> Result<()> {
+    pub fn process_read_event(&mut self, event: &Event) -> Result<()> {
         loop {
             let (len, local, remote) = match self.sock.recv_from(&mut self.recv_buf, event.token())
             {
@@ -233,7 +233,7 @@ impl TransportHandler for ServerHandler {
     }
 
     fn on_stream_readable(&mut self, conn: &mut Connection, stream_id: u64) {
-        debug!("{} stream {} is readable", conn.trace_id(), stream_id,);
+        /*debug!("{} stream {} is readable", conn.trace_id(), stream_id,);
 
         while let Ok((read, fin)) = conn.stream_read(stream_id, &mut self.buf) {
             debug!(
@@ -252,7 +252,7 @@ impl TransportHandler for ServerHandler {
                 };
                 return;
             }
-        }
+        }*/
     }
 
     fn on_stream_writable(&mut self, conn: &mut Connection, stream_id: u64) {
@@ -278,7 +278,31 @@ impl TransportHandler for ServerHandler {
         debug!("{} connection has a datagram losted",conn.trace_id());
     }
     fn on_datagram_recvived(&mut self ,conn:& Connection) {
+        let mut data=Bytes::new();
+        if conn.datagram_readable()
+        {   
+            data=conn.datagram_recv();
+        }else{
+            debug!("why cannt read");
+            return;
+        }
+        debug!("server has recvived :{}",std::str::from_utf8(&data)?);
         debug!("{} connection recevived a datagram ",conn.trace_id());
+        let data=Bytes::from("Hallo, World,too");
+        match conn.datagram_send(data, data.len(), true) {
+            Ok(())=>
+            {
+                debug!("{} connetion succeed ot send a datagram");
+            }
+            Err(e)=>
+            {
+                /*error!(
+                "{} failed to send datagram: {}",
+                self.trace_id, e
+                );
+                Err(e) */
+            }
+        }
         
     }
 }

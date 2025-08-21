@@ -29,7 +29,7 @@ use tquic::Error;
 use tquic::PacketInfo;
 use tquic::TlsConfig;
 use tquic::TransportHandler;
-
+use crate::Connection;
 use tquic_example_rust::QuicSocket;
 use tquic_example_rust::Result;
 
@@ -120,7 +120,7 @@ impl Client {
         context.finish()
     }
 
-    fn process_read_event(&mut self, event: &Event) -> Result<()> {
+    pub fn process_read_event(&mut self, event: &Event) -> Result<()> {
         loop {
             if self.context.borrow().finish() {
                 break;
@@ -238,12 +238,27 @@ impl TransportHandler for ClientHandler {
     fn on_conn_established(&mut self, conn: &mut Connection) {
         debug!("{} connection is established", conn.trace_id());
 
-        match conn.stream_write(0, Bytes::from_static(b"GET /\r\n"), true) {
+        /*match conn.stream_write(0, Bytes::from_static(b"GET /\r\n"), true) {
             Ok(_) | Err(Error::Done) => {}
             Err(e) => {
                 error!("stream send failed {:?}", e);
             }
-        };
+        };*/
+        let data=Bytes::from("Hallo, World");
+        match conn.datagram_send(data, data.len(), true) {
+            Ok(())=>
+            {
+                debug!("{} connetion succeed ot send a datagram");
+            }
+            Err(e)=>
+            {
+                /*error!(
+                "{} failed to send datagram: {}",
+                self.trace_id, e
+                );
+                Err(e) */
+            }
+        }
     }
 
     fn on_conn_closed(&mut self, conn: &mut Connection) {
@@ -262,7 +277,7 @@ impl TransportHandler for ClientHandler {
     }
 
     fn on_stream_readable(&mut self, conn: &mut Connection, stream_id: u64) {
-        match conn.stream_read(stream_id, &mut self.buf) {
+       /*  match conn.stream_read(stream_id, &mut self.buf) {
             Ok((n, fin)) => {
                 debug!(
                     "{} read {} bytes from stream {}",
@@ -289,7 +304,7 @@ impl TransportHandler for ClientHandler {
                     e
                 );
             }
-        }
+        }*/
     }
 
     fn on_stream_writable(&mut self, _conn: &mut Connection, _stream_id: u64) {}
@@ -314,7 +329,20 @@ impl TransportHandler for ClientHandler {
     }
     fn on_datagram_recvived(&mut self ,conn:& Connection) {
         debug!("{} connection recevived a datagram ",conn.trace_id());
-        
+
+        let mut data=Bytes::new();
+        if conn.datagram_readable()
+        {   
+            data=conn.datagram_recv();
+        }else{
+            debug!("why cannt read");
+            return;
+        }
+        debug!("server has recvived :{}",std::str::from_utf8(&data)?);
+        match conn.close(true, 0x00, b"ok") {
+            Ok(_) | Err(Error::Done) => (),
+            Err(e) => panic!("error closing conn: {:?}", e),
+        }
     }
 }
 

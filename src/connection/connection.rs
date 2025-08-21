@@ -1000,6 +1000,7 @@ impl Connection {
                 match self.datagram_map.incoming_datagram(length,data){
                     Ok(datagram_id)=>
                     {
+                        //if put success
                         self.events.add(Event::DatagramReceived());
                     }
                     Err(e @ Error::ProtocolViolation)=>
@@ -1252,6 +1253,8 @@ impl Connection {
             );
         }
 
+
+        // here updata the peer_max_datagram_frame_size
         self.set_peer_trans_params(peer_params)?;
         self.flags.insert(AppliedPeerTransportParams);
 
@@ -2990,6 +2993,8 @@ impl Connection {
                     Frame::Datagram { length, data }=>{
                         debug!("{} datagram lost  size={:?}", self.trace_id, data.len());
                         self.events.add(Event::DatagramLost());
+
+                        //datagram not need to retry but need to event application
                     }
                     // Cancellation of stream transmission, as carried in a
                     // RESET_STREAM frame, is sent until acknowledged or until
@@ -3230,7 +3235,8 @@ impl Connection {
                 || path.need_send_ping
                 || self.cids.need_send_cid_control_frames()
                 || self.streams.need_send_stream_frames()
-                || self.spaces.need_send_buffered_frames())
+                || self.spaces.need_send_buffered_frames()
+                || self.datagram_map.need_send_datagram_frames())// add 
         {
             if !self.is_server && self.tls_session.is_in_early_data() {
                 return Ok(PacketType::ZeroRTT);
@@ -3248,6 +3254,7 @@ impl Connection {
             || self.local_error.as_ref().is_some_and(|e| e.is_app)
             || self.cids.need_send_cid_control_frames()
             || self.streams.need_send_stream_frames()
+            || self.datagram_map.need_send_datagram_frames()//add 
     }
 
     /// Find space id for the specified packet type and path id.
@@ -4127,6 +4134,48 @@ impl Connection {
         self.streams.stream_destroy(stream_id);
     }
 
+    //if datagram can read a datagram
+    pub  fn datagram_readable(&mut self)->bool
+    {
+        !self.datagram_map.if_in_empty()
+    }
+    // the space to send 
+    pub fn send_available_space(&mut self )->usize{
+        self.datagram_map.send_available_space()
+    }
+    // push data to send 
+    pub fn datagram_send(&mut self,
+        data:Bytes,
+        length:Option<usize>,
+        drop_if:bool)->Result<()>
+    {
+        match self.datagram_map.send_datagram(data, length,drop_if)
+        {
+            Ok(drop_num) => {
+                if drop_num > 0 {
+                self.events.add(Event::DatagramDrop(drop_num));
+                }
+                Ok(())
+            }
+            Err(e) => {
+                error!(
+                "{} failed to send datagram: {}",
+                self.trace_id, e
+                );
+                Err(e)
+            }
+        }
+    }
+    //get a datagram that recv
+    pub fn datagram_recv(&mut self)->Some<Bytes>
+    {
+        if Some((length,data))=self.datagram_map.get_datagram()
+        {
+            return Some(data);
+        }else{
+            return None;
+        }
+    }
     /// Return the internal identifier of the connection on the Endpoint. The
     /// internal identifier is not the same as the Connection ID as described
     /// in RFC 9000.
@@ -4393,6 +4442,7 @@ impl Connection {
         qlog.add_event_data(time::Instant::now(), ev_data).ok();
     }
 }
+
 
 /// A set of crypto streams for Initial/Handshake/1RTT level.
 struct CryptoStreams {

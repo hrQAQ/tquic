@@ -112,16 +112,17 @@ impl DatagramMap
         Some(mtu_limit.min(peer_limit))
     }
     //send a datagram from application to out_queue
-    pub fn send_datagram(&mut self,data: Bytes,drop_if:bool)->Result<()>
+    pub fn send_datagram(&mut self,data: Bytes,length:Option<usize>,drop_if:bool)->Result<u64>
     {
         if !self.peer_is_enable()
         {
-            return Err(Error::ErrorDatagramTest);
+            return Err(Error::ProtocolViolation);
         }
         if self.out_max_size<data.len()
         {
-            return Err(Error::ErrorDatagramTest);//data > out_queue
+            return Err(Error::DatagramFrameBeyondMemory);//data > out_queue
         }
+        let mut drop_num:u64=0;
         if self.out_total_size+data.len()>self.out_max_size
         {
             if drop_if
@@ -130,13 +131,14 @@ impl DatagramMap
                 {
                     if let Some(datagramunit)=self.out_queue.pop_front()
                     {
+                        drop_num+=1;
                         self.out_total_size-=data.len();
                     }else{
                         break;
                     }
                 }
             }else{
-                return Err(Error::ErrorDatagramTest);
+                return Err(Error::DatagramFrameBeyondMemory);
             }
         }
 
@@ -145,7 +147,7 @@ impl DatagramMap
             );
         self.out_total_size +=data.len();
         self.index_out+=1;//change the index
-        return Ok(());
+        return Ok(drop_num.clone());
     }
     //send a datagram from out_queue 
     pub fn outcome_datagram(&mut self, max_payload_size:usize)->Option<(Option<usize>,Bytes)>{
@@ -189,7 +191,7 @@ impl DatagramMap
         self.index_in+=1;
         Ok(self.index_in-1)
     }
-    //从接收队列取出一个帧给引用层
+    //from in_queue to application
     pub fn get_datagram(&mut self)->Option<(Option<usize>,Bytes)>
     {
         if let Some(datagramunit)=self.in_queue.pop_front(){
@@ -215,5 +217,9 @@ impl DatagramMap
     pub fn if_in_empty(&self)->bool
     {
         self.in_queue.is_empty();
+    }
+    pub fn need_send_datagram_frames(&self)->bool
+    {
+        !self.if_out_empty()
     }
 }
