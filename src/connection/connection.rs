@@ -1000,7 +1000,7 @@ impl Connection {
                 match self.datagram_map.incoming_datagram(length,data){
                     Ok(datagram_id)=>
                     {
-                        self.events.add(Event::DatagramReceived(datagram_id));
+                        self.events.add(Event::DatagramReceived());
                     }
                     Err(e @ Error::ProtocolViolation)=>
                     {
@@ -1551,7 +1551,7 @@ impl Connection {
                             "{} the datagram has been acked, len: {:?}, data: {:?}",
                             self.trace_id, data.len(), data,
                         );
-                        self.events.add(Event::DatagramAcked(0));
+                        self.events.add(Event::DatagramAcked());
                         // 1.inform application layer datagram has been ack
                         // 2.datagram statistic
                         // 3.qlog recorder
@@ -2988,7 +2988,8 @@ impl Connection {
                             .on_stream_frame_lost(stream_id, offset, length, fin);
                     }
                     Frame::Datagram { length, data }=>{
-
+                        debug!("{} datagram lost  size={:?}", self.trace_id, data.len());
+                        self.events.add(Event::DatagramLost());
                     }
                     // Cancellation of stream transmission, as carried in a
                     // RESET_STREAM frame, is sent until acknowledged or until

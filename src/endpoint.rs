@@ -581,22 +581,22 @@ impl Endpoint {
                     self.handler.on_stream_closed(conn, stream_id);
                     conn.stream_destroy(stream_id);
                 }
-                Event::DatagramAcked(datagram_id)=>{
+                Event::DatagramAcked()=>{
 
                 }
-                Event::DatagramLost(datagram_id)=>
+                Event::DatagramLost()=>
                 {
 
                 }
-                Event::DatagramDrop(datagram_id)=>
+                Event::DatagramDrop()=>
                 {
 
                 }
-                Event::DatagramReceived(datagram_id)=>
+                Event::DatagramReceived()=>
                 {
 
                 }
-                Event::Datagramlongtime(datagram_id)=>
+                Event::Datagramlongtime()=>
                 {
 
                 }
@@ -1852,7 +1852,7 @@ mod tests {
             self.token = Some(token);
         }
 
-        fn on_datagram_acked(&mut self,conn:& mut connection) {
+        fn on_datagram_acked(&mut self,conn:& mut Connection) {
             
         }
         fn on_datagram_drop(&mut self,conn: &mut Connection) {
@@ -1861,13 +1861,10 @@ mod tests {
         fn on_datagram_longtime(&mut self,conn: &mut Connection) {
             
         }
-        fn on_datagram_losted(&mut self,conn:&mut connection) {
+        fn on_datagram_losted(&mut self,conn:&mut Connection) {
             
         }
-        fn on_datagram_received(&mut self,conn:& mut connection) {
-            
-        }
-        fn on_datagram_recvived(&mut self ,conn:& mut connection) {
+        fn on_datagram_recvived(&mut self ,conn:& mut Connection) {
             
         }
     }
@@ -1963,9 +1960,7 @@ mod tests {
         fn on_datagram_losted(&mut self,conn:&mut connection) {
             
         }
-        fn on_datagram_received(&mut self,conn:& mut connection) {
-            
-        }
+
         fn on_datagram_recvived(&mut self ,conn:& mut connection) {
             
         }

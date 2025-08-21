@@ -301,7 +301,8 @@ fn version_is_supported(version: u32) -> bool {
 
 /// Configurations about QUIC endpoint.
 #[derive(Clone)]
-pub struct Config {
+pub struct 
+Config {
     /// QUIC transport configuration.
     local_transport_params: TransportParams,
 
@@ -779,6 +780,17 @@ impl Config {
             None => Err(Error::TlsFail("get tls config failed".into())),
         }
     }
+
+    pub fn set_local_max_datagram_frame_size(&self,max_datagram_frame_size:usize)->Result<()>
+    {
+        if max_datagram_frame_size>=0
+        {
+            self.local_transport_params.max_datagram_frame_size=max_datagram_frame_size;
+            return Ok(());
+        }else{
+            return Err(Error::ProtocolViolation);
+        }
+    }
 }
 
 /// Configurations about loss recovery, congestion control, and pmtu discovery.
@@ -931,15 +943,15 @@ enum Event {
     /// The stream is closed.
     StreamClosed(u64),
 
-    DatagramReceived(u64),
+    DatagramReceived(),
 
-    DatagramAcked(u64),
+    DatagramAcked(),
 
-    DatagramLost(u64),
+    DatagramLost(),
 
-    DatagramDrop(u64),
+    DatagramDrop(),
 
-    Datagramlongtime(u64),
+    Datagramlongtime(),
 }
 
 #[derive(Default)]
@@ -1041,13 +1053,11 @@ pub trait TransportHandler {
     /// Called when client receives a token in NEW_TOKEN frame.
     fn on_new_token(&mut self, conn: &mut Connection, token: Vec<u8>);
 
-    fn on_datagram_received(&mut self,conn:& mut connection);
+    fn on_datagram_acked(&mut self,conn:& mut Connection);
 
-    fn on_datagram_acked(&mut self,conn:& mut connection);
+    fn on_datagram_losted(&mut self,conn:&mut Connection);
 
-    fn on_datagram_losted(&mut self,conn:&mut connection);
-
-    fn on_datagram_recvived(&mut self ,conn:& mut connection);
+    fn on_datagram_recvived(&mut self ,conn:& mut Connection);
 
     fn on_datagram_drop(&mut self,conn: &mut Connection);
 

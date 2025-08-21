@@ -1258,16 +1258,15 @@ pub fn encode_datagram_header(
     length:Option<usize>,
     mut b:&mut [u8])->Result<usize>{
     let len=b.len();
-    let mut frame_type:u8 =0b00110000;
-    if length
+    let frame_type: u8 = if length.is_some() { 0x31 } else { 0x30 };
+    if Some(len)=length
     {
-        frame_type+=1;
         b.write_varint(u64::from(frame_type))?;
-        b.write_varint(length.unwrap())?;
+        b.write_varint(*len as u64)?;
     }else{
         b.write_varint(u64::from(frame_type))?;
-        b.write_varint(0u64)?;
     }
+    Ok(len-b.len())
 }
 
 /// The ACK frame uses the least significant bit of the type value (type 0x03)

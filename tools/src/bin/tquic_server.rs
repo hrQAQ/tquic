@@ -1094,6 +1094,22 @@ impl TransportHandler for ServerHandler {
     }
 
     fn on_new_token(&mut self, _conn: &mut Connection, _token: Vec<u8>) {}
+
+    fn on_datagram_acked(&mut self,conn:& mut tquic::connection) {
+        
+    }
+    fn on_datagram_drop(&mut self,conn: &mut Connection) {
+        
+    }
+    fn on_datagram_longtime(&mut self,conn: &mut Connection) {
+        
+    }
+    fn on_datagram_losted(&mut self,conn:&mut tquic::connection) {
+        
+    }
+    fn on_datagram_recvived(&mut self ,conn:& mut tquic::connection) {
+        
+    }
 }
 
 fn process_option(option: &mut ServerOpt) -> Result<()> {

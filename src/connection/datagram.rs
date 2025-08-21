@@ -159,7 +159,7 @@ impl DatagramMap
         }else{
             let datagramunit=self.out_queue.pop_front().unwrap();
             self.out_total_size-=datagramunit.data.len();
-            return Some((data.length, data.clone()));
+            return Some((datagramunit.data.length, datagramunit.data.clone()));
         }
 
     }
