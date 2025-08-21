@@ -31,8 +31,8 @@ use tquic::TlsConfig;
 use tquic::TransportHandler;
 //use tquic_tools::QuicSocket;
 //use tquic_tools::Result;
-use tquic_example_rust::QuicSocket;
-use tquic_example_rust::Result;
+use tquic_tools::QuicSocket;
+use tquic_tools::Result;
 
 #[derive(Parser, Debug, Clone)]
 #[clap(name = "client")]
