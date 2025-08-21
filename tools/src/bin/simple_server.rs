@@ -31,8 +31,9 @@ use tquic::TlsConfig;
 use tquic::TransportHandler;
 //use tquic_tools::QuicSocket;
 //use tquic_tools::Result;
-use tquic_example_rust::QuicSocket;
-use tquic_example_rust::Result;
+use tquic_tools::qskt::QuicSocket;
+use tquic_tools::qskt::Result;
+
 
 #[derive(Parser, Debug)]
 #[clap(name = "server")]
@@ -265,35 +266,35 @@ impl TransportHandler for ServerHandler {
     }
 
     fn on_new_token(&mut self, _conn: &mut Connection, _token: Vec<u8>) {}
-    fn on_datagram_acked(&mut self,conn:& mut Connection) {
-        debug!("{} connection has a datagram acked",conn.trace_id());
+    fn on_datagram_acked(&mut self,_conn:& mut Connection) {
+        debug!("{} connection has a datagram acked",_conn.trace_id());
     }
-    fn on_datagram_drop(&mut self,conn: &mut Connection) {
-        debug!("{} connection droped a datagram",conn.trace_id());
+    fn on_datagram_drop(&mut self,_conn: &mut Connection) {
+        debug!("{} connection droped a datagram",_conn.trace_id());
     }
-    fn on_datagram_longtime(&mut self,conn: &mut Connection) {
-        debug!("{} connection has a datagram beyond the limited of time",conn.trace_id());
+    fn on_datagram_longtime(&mut self,_conn: &mut Connection) {
+        debug!("{} connection has a datagram beyond the limited of time",_conn.trace_id());
         
     }
-    fn on_datagram_losted(&mut self,conn:&mut Connection) {
-        debug!("{} connection has a datagram losted",conn.trace_id());
+    fn on_datagram_losted(&mut self,_conn:&mut Connection) {
+        debug!("{} connection has a datagram losted",_conn.trace_id());
     }
-    fn on_datagram_recvived(&mut self ,conn:& Connection) {
+    fn on_datagram_recvived(&mut self ,_conn:& mut Connection) {
         let mut data=Bytes::new();
-        if conn.datagram_readable()
+        if _conn.datagram_readable()
         {   
-            data=conn.datagram_recv();
+            data=_conn.datagram_recv().unwrap();
         }else{
             debug!("why cannt read");
             return;
         }
-        debug!("server has recvived :{}",std::str::from_utf8(&data)?);
-        debug!("{} connection recevived a datagram ",conn.trace_id());
+        debug!("server has recvived :{}",std::str::from_utf8(&data).unwrap());
+        debug!("{} connection recevived a datagram ",_conn.trace_id());
         let data=Bytes::from("Hallo, World,too");
-        match conn.datagram_send(data, data.len(), true) {
+        match _conn.datagram_send(data.clone(), Some(data.len()), true) {
             Ok(())=>
             {
-                debug!("{} connetion succeed ot send a datagram");
+                debug!("{} connetion succeed ot send a datagram",_conn.trace_id());
             }
             Err(e)=>
             {

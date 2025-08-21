@@ -781,11 +781,10 @@ impl Config {
         }
     }
 
-    pub fn set_local_max_datagram_frame_size(& mut self,max_datagram_frame_size:u64)->Result<()>
+    pub fn set_local_max_datagram_frame_size(& mut self,max_datagram_frame_size:u64)
     {
 
         self.local_transport_params.max_datagram_frame_size=max_datagram_frame_size;
-        return Ok(());
     }
 }
 

@@ -31,8 +31,8 @@ use tquic::TlsConfig;
 use tquic::TransportHandler;
 //use tquic_tools::QuicSocket;
 //use tquic_tools::Result;
-use tquic_tools::QuicSocket;
-use tquic_tools::Result;
+use tquic_tools::qskt::QuicSocket;
+use tquic_tools::qskt::Result;
 
 #[derive(Parser, Debug, Clone)]
 #[clap(name = "client")]
@@ -105,7 +105,7 @@ impl Client {
         )?);
 
         // Set max_datagram_frame_size
-        config.set_local_max_datagram_frame_size(option.max_datagram_frame_size);
+        config.set_local_max_datagram_frame_size(option.max_datagram_frame_size as u64);
         
         Ok(Client {
             endpoint: Endpoint::new(Box::new(config), false, Box::new(handlers), sock.clone()),
@@ -246,10 +246,10 @@ impl TransportHandler for ClientHandler {
             }
         };*/
         let data=Bytes::from("Hallo, World");
-        match conn.datagram_send(data, data.len(), true) {
+        match conn.datagram_send(data.clone(), Some(data.len()), true) {
             Ok(())=>
             {
-                debug!("{} connetion succeed ot send a datagram");
+                debug!("{} connetion succeed ot send a datagram",conn.trace_id());
             }
             Err(e)=>
             {
@@ -328,18 +328,18 @@ impl TransportHandler for ClientHandler {
     fn on_datagram_losted(&mut self,conn:&mut Connection) {
         debug!("{} connection has a datagram losted",conn.trace_id());
     }
-    fn on_datagram_recvived(&mut self ,conn:& Connection) {
+    fn on_datagram_recvived(&mut self ,conn:& mut Connection) {
         debug!("{} connection recevived a datagram ",conn.trace_id());
 
         let mut data=Bytes::new();
         if conn.datagram_readable()
         {   
-            data=conn.datagram_recv();
+            data=conn.datagram_recv().unwrap();
         }else{
             debug!("why cannt read");
             return;
         }
-        debug!("server has recvived :{}",std::str::from_utf8(&data)?);
+        debug!("server has recvived :{}",std::str::from_utf8(&data).unwrap());
         match conn.close(true, 0x00, b"ok") {
             Ok(_) | Err(Error::Done) => (),
             Err(e) => panic!("error closing conn: {:?}", e),
