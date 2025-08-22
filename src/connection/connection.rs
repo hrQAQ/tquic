@@ -466,11 +466,8 @@ impl Connection {
         info: &PacketInfo,
         pid: Option<usize>,
     ) -> Result<usize> {
-        let buf_copy=buf.to_vec();
-        let str_lossy = std::str::from_utf8_mut(&buf_copy);
-        let chars: Vec<char> = str_lossy.chars().collect(); 
 
-        info!(" [recv_packet] buf : {:?}",chars);
+        info!(" [recv_packet] buf : {:?}",buf);
         if buf.is_empty() {
             return Err(Error::Done);
         }
