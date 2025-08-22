@@ -35,7 +35,6 @@ use tquic::TransportHandler;
 use tquic_tools::qskt::QuicSocket;
 use tquic_tools::qskt::Result;
 
-
 #[derive(Parser, Debug)]
 #[clap(name = "server")]
 pub struct ServerOpt {
@@ -71,7 +70,6 @@ pub struct ServerOpt {
     /// Save QUIC qlog into the given file.
     #[clap(long, value_name = "FILE")]
     pub qlog_file: Option<String>,
-
 
     /// Maximum datagram frame size in bytes (for DATAGRAM extension).
     #[clap(long, default_value = "1200", value_name = "SIZE")]
@@ -116,7 +114,7 @@ impl Server {
 
         // Set max_datagram_frame_size
         config.set_local_max_datagram_frame_size(option.max_datagram_frame_size as u64);
-        
+
         Ok(Server {
             endpoint: Endpoint::new(Box::new(config), true, Box::new(handlers), sock.clone()),
             poll,
@@ -224,18 +222,17 @@ impl TransportHandler for ServerHandler {
 
     fn on_conn_established(&mut self, conn: &mut Connection) {
         debug!("{} connection is established", conn.trace_id());
-        let data=Bytes::from("Hallo, World");
+        let data = Bytes::from("Hallo, World");
         match conn.datagram_send(data.clone(), Some(data.len()), true) {
-            Ok(())=>
-            {
-                info!("{} connetion succeed ot send a datagram:{:?}",conn.trace_id(),data);
-            }
-            Err(_e)=>
-            {
-                error!(
-                "{} failed to send datagram: {}",
-                conn.trace_id(), _e
+            Ok(()) => {
+                info!(
+                    "{} connetion succeed ot send a datagram:{:?}",
+                    conn.trace_id(),
+                    data
                 );
+            }
+            Err(_e) => {
+                error!("{} failed to send datagram: {}", conn.trace_id(), _e);
             }
         }
     }
@@ -280,35 +277,39 @@ impl TransportHandler for ServerHandler {
     }
 
     fn on_new_token(&mut self, _conn: &mut Connection, _token: Vec<u8>) {}
-    fn on_datagram_acked(&mut self,_conn:& mut Connection) {
-        debug!("{} connection has a datagram acked",_conn.trace_id());
+    fn on_datagram_acked(&mut self, _conn: &mut Connection) {
+        debug!("{} connection has a datagram acked", _conn.trace_id());
     }
-    fn on_datagram_drop(&mut self,_conn: &mut Connection) {
-        debug!("{} connection droped a datagram",_conn.trace_id());
+    fn on_datagram_drop(&mut self, _conn: &mut Connection) {
+        debug!("{} connection droped a datagram", _conn.trace_id());
     }
-    fn on_datagram_longtime(&mut self,_conn: &mut Connection) {
-        debug!("{} connection has a datagram beyond the limited of time",_conn.trace_id());
-        
+    fn on_datagram_longtime(&mut self, _conn: &mut Connection) {
+        debug!(
+            "{} connection has a datagram beyond the limited of time",
+            _conn.trace_id()
+        );
     }
-    fn on_datagram_losted(&mut self,_conn:&mut Connection) {
-        debug!("{} connection has a datagram losted",_conn.trace_id());
+    fn on_datagram_losted(&mut self, _conn: &mut Connection) {
+        debug!("{} connection has a datagram losted", _conn.trace_id());
     }
-    fn on_datagram_recvived(&mut self ,_conn:& mut Connection) {
-        let  data=if _conn.datagram_readable()
-        {   
+    fn on_datagram_recvived(&mut self, _conn: &mut Connection) {
+        let data = if _conn.datagram_readable() {
             _conn.datagram_recv().unwrap()
-        }else{
+        } else {
             debug!("why cannt read");
             return;
         };
-        info!("server has recvived :{:?}",data);
-        info!("{} connection recevived a datagram ",_conn.trace_id());
+        info!("server has recvived :{:?}", data);
+        info!("{} connection recevived a datagram ", _conn.trace_id());
 
         match _conn.close(true, 0x00, b"ok") {
             Ok(_) | Err(Error::Done) => (),
-            Err(e) => panic!("error closing conn (trace_id: {}) : {:?}", _conn.trace_id(), e),
+            Err(e) => panic!(
+                "error closing conn (trace_id: {}) : {:?}",
+                _conn.trace_id(),
+                e
+            ),
         }
-        
     }
 }
 

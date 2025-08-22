@@ -20,8 +20,8 @@ use std::time::Instant;
 use bytes::Bytes;
 use clap::Parser;
 use log::debug;
-use log::info;
 use log::error;
+use log::info;
 use mio::event::Event;
 use tquic::Config;
 use tquic::Connection;
@@ -107,7 +107,7 @@ impl Client {
 
         // Set max_datagram_frame_size
         config.set_local_max_datagram_frame_size(option.max_datagram_frame_size as u64);
-        
+
         Ok(Client {
             endpoint: Endpoint::new(Box::new(config), false, Box::new(handlers), sock.clone()),
             poll,
@@ -278,7 +278,7 @@ impl TransportHandler for ClientHandler {
     }
 
     fn on_stream_readable(&mut self, conn: &mut Connection, stream_id: u64) {
-         match conn.stream_read(stream_id, &mut self.buf) {
+        match conn.stream_read(stream_id, &mut self.buf) {
             Ok((n, fin)) => {
                 debug!(
                     "{} read {} bytes from stream {}",
@@ -315,43 +315,43 @@ impl TransportHandler for ClientHandler {
     }
 
     fn on_new_token(&mut self, _conn: &mut Connection, _token: Vec<u8>) {}
-    fn on_datagram_acked(&mut self,conn:& mut Connection) {
-        debug!("{} connection has a datagram acked",conn.trace_id());
+    fn on_datagram_acked(&mut self, conn: &mut Connection) {
+        debug!("{} connection has a datagram acked", conn.trace_id());
         info!("a datagram acked");
     }
-    fn on_datagram_drop(&mut self,conn: &mut Connection) {
-        debug!("{} connection droped a datagram",conn.trace_id());
+    fn on_datagram_drop(&mut self, conn: &mut Connection) {
+        debug!("{} connection droped a datagram", conn.trace_id());
     }
-    fn on_datagram_longtime(&mut self,conn: &mut Connection) {
-        debug!("{} connection has a datagram beyond the limited of time",conn.trace_id());
-        
+    fn on_datagram_longtime(&mut self, conn: &mut Connection) {
+        debug!(
+            "{} connection has a datagram beyond the limited of time",
+            conn.trace_id()
+        );
     }
-    fn on_datagram_losted(&mut self,conn:&mut Connection) {
-        debug!("{} connection has a datagram losted",conn.trace_id());
+    fn on_datagram_losted(&mut self, conn: &mut Connection) {
+        debug!("{} connection has a datagram losted", conn.trace_id());
     }
-    fn on_datagram_recvived(&mut self ,conn:& mut Connection) {
-        debug!("{} connection recevived a datagram ",conn.trace_id());
+    fn on_datagram_recvived(&mut self, conn: &mut Connection) {
+        debug!("{} connection recevived a datagram ", conn.trace_id());
 
-        let  data=if conn.datagram_readable()
-        {   
+        let data = if conn.datagram_readable() {
             conn.datagram_recv().unwrap()
-        }else{
+        } else {
             debug!("why cannt read");
             return;
         };
-        info!("client has recvived :{:?}",data);
-        let new_data=Bytes::from("Hallo, World,too");
+        info!("client has recvived :{:?}", data);
+        let new_data = Bytes::from("Hallo, World,too");
         match conn.datagram_send(new_data.clone(), Some(new_data.len()), true) {
-            Ok(())=>
-            {
-                 info!("{} connetion succeed ot send a datagram: {:?}",conn.trace_id(),new_data);
-            }
-            Err(e)=>
-            {
-                error!(
-                "{} failed to send datagram: {}",
-                conn.trace_id(), e
+            Ok(()) => {
+                info!(
+                    "{} connetion succeed ot send a datagram: {:?}",
+                    conn.trace_id(),
+                    new_data
                 );
+            }
+            Err(e) => {
+                error!("{} failed to send datagram: {}", conn.trace_id(), e);
             }
         }
     }

@@ -12,12 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::collections::HashSet;
-use std::net::Ipv4Addr;
-use std::net::Ipv6Addr;
-use std::net::SocketAddrV4;
-use std::net::SocketAddrV6;
-use log::info;
 use crate::codec;
 use crate::codec::Decoder;
 use crate::codec::Encoder;
@@ -31,6 +25,12 @@ use crate::token::ResetToken;
 use crate::ConnectionId;
 use crate::Result;
 use crate::MAX_STREAMS_PER_TYPE;
+use log::info;
+use std::collections::HashSet;
+use std::net::Ipv4Addr;
+use std::net::Ipv6Addr;
+use std::net::SocketAddrV4;
+use std::net::SocketAddrV6;
 
 /// TransportParams is a sequence of transport parameters.
 ///
@@ -132,7 +132,7 @@ pub struct TransportParams {
 impl TransportParams {
     // Decode transport parameters from the given buffer.
     pub(crate) fn decode(mut buf: &[u8], is_server: bool) -> Result<(TransportParams, usize)> {
-        info!("decode buf :{:?}",buf);
+        info!("decode buf :{:?}", buf);
         let len = buf.len();
         let mut tp = TransportParams::default();
         let mut found_params = HashSet::new();
@@ -279,10 +279,10 @@ impl TransportParams {
                 0x0020 => {
                     let max_datagram_frame_size = val.read_varint()?;
                     /*if max_datagram_frame_size < 0 /*|| max_datagram_frame_size > 65535*/{
-                    
+
                         return Err(Error::TransportParameterError);
                     }*/
-                    info!("0x0020:{}",max_datagram_frame_size);
+                    info!("0x0020:{}", max_datagram_frame_size);
                     tp.max_datagram_frame_size = max_datagram_frame_size;
                 }
 
@@ -308,7 +308,7 @@ impl TransportParams {
         is_server: bool,
         mut buf: &mut [u8],
     ) -> Result<usize> {
-        info!("encode buf :{:?}",buf);
+        info!("encode buf :{:?}", buf);
         let len = buf.len();
 
         if is_server {
@@ -422,7 +422,7 @@ impl TransportParams {
                 buf.write(scid)?;
             }
         }
-        info!("encode max_datasize: {}",tp.max_datagram_frame_size);
+        info!("encode max_datasize: {}", tp.max_datagram_frame_size);
         if tp.max_datagram_frame_size != 0 {
             buf.write_varint(0x0020)?;
             buf.write_varint(codec::encode_varint_len(tp.max_datagram_frame_size) as u64)?;
@@ -484,7 +484,7 @@ impl TransportParams {
             initial_max_streams_bidi: Some(self.initial_max_streams_bidi),
             initial_max_streams_uni: Some(self.initial_max_streams_uni),
             preferred_address: None,
-            max_datagram_frame_size: Some(self.max_datagram_frame_size ),
+            max_datagram_frame_size: Some(self.max_datagram_frame_size),
             grease_quic_bit: None,
         }
     }
@@ -530,9 +530,9 @@ impl Default for TransportParams {
             enable_multipath: false,
             disable_encryption: false,
 
-            // The default for this parameter is 0, which indicates that 
-            // the endpoint does not support DATAGRAM frames. 
-            max_datagram_frame_size: 0,            
+            // The default for this parameter is 0, which indicates that
+            // the endpoint does not support DATAGRAM frames.
+            max_datagram_frame_size: 0,
         }
     }
 }

@@ -157,8 +157,6 @@ pub enum Error {
 
     //
     DatagramFrameBeyondMemory,
-
-
 }
 
 impl Error {
@@ -224,8 +222,8 @@ impl Error {
             Error::StreamStopped(_) => -110,
             Error::StreamReset(_) => -111,
             Error::IoError(_) => -112,
-            Error::ErrorDatagramTest=>-113,
-            Error::DatagramFrameBeyondMemory=>-114,
+            Error::ErrorDatagramTest => -113,
+            Error::DatagramFrameBeyondMemory => -114,
         }
     }
 }

@@ -301,8 +301,7 @@ fn version_is_supported(version: u32) -> bool {
 
 /// Configurations about QUIC endpoint.
 #[derive(Clone)]
-pub struct 
-Config {
+pub struct Config {
     /// QUIC transport configuration.
     local_transport_params: TransportParams,
 
@@ -781,10 +780,8 @@ impl Config {
         }
     }
 
-    pub fn set_local_max_datagram_frame_size(& mut self,max_datagram_frame_size:u64)
-    {
-
-        self.local_transport_params.max_datagram_frame_size=max_datagram_frame_size;
+    pub fn set_local_max_datagram_frame_size(&mut self, max_datagram_frame_size: u64) {
+        self.local_transport_params.max_datagram_frame_size = max_datagram_frame_size;
     }
 }
 
@@ -1048,15 +1045,15 @@ pub trait TransportHandler {
     /// Called when client receives a token in NEW_TOKEN frame.
     fn on_new_token(&mut self, conn: &mut Connection, token: Vec<u8>);
 
-    fn on_datagram_acked(&mut self,conn:& mut Connection);
+    fn on_datagram_acked(&mut self, conn: &mut Connection);
 
-    fn on_datagram_losted(&mut self,conn:&mut Connection);
+    fn on_datagram_losted(&mut self, conn: &mut Connection);
 
-    fn on_datagram_recvived(&mut self ,conn:& mut Connection);
+    fn on_datagram_recvived(&mut self, conn: &mut Connection);
 
-    fn on_datagram_drop(&mut self,conn: &mut Connection);
+    fn on_datagram_drop(&mut self, conn: &mut Connection);
 
-    fn on_datagram_longtime(&mut self,conn: &mut Connection);
+    fn on_datagram_longtime(&mut self, conn: &mut Connection);
 }
 
 /// The PacketSendHandler lists the callbacks used by the endpoint to

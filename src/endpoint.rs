@@ -581,23 +581,19 @@ impl Endpoint {
                     self.handler.on_stream_closed(conn, stream_id);
                     conn.stream_destroy(stream_id);
                 }
-                Event::DatagramAcked()=>{
+                Event::DatagramAcked() => {
                     self.handler.on_datagram_acked(conn);
                 }
-                Event::DatagramLost()=>
-                {
+                Event::DatagramLost() => {
                     self.handler.on_datagram_losted(conn);
                 }
-                Event::DatagramDrop(drop_num)=>
-                {
+                Event::DatagramDrop(drop_num) => {
                     self.handler.on_datagram_drop(conn);
                 }
-                Event::DatagramReceived()=>
-                {
+                Event::DatagramReceived() => {
                     self.handler.on_datagram_recvived(conn);
                 }
-                Event::Datagramlongtime()=>
-                {
+                Event::Datagramlongtime() => {
                     self.handler.on_datagram_longtime(conn);
                 }
             }
@@ -1852,21 +1848,11 @@ mod tests {
             self.token = Some(token);
         }
 
-        fn on_datagram_acked(&mut self,conn:& mut Connection) {
-            
-        }
-        fn on_datagram_drop(&mut self,conn: &mut Connection) {
-            
-        }
-        fn on_datagram_longtime(&mut self,conn: &mut Connection) {
-            
-        }
-        fn on_datagram_losted(&mut self,conn:&mut Connection) {
-            
-        }
-        fn on_datagram_recvived(&mut self ,conn:& mut Connection) {
-            
-        }
+        fn on_datagram_acked(&mut self, conn: &mut Connection) {}
+        fn on_datagram_drop(&mut self, conn: &mut Connection) {}
+        fn on_datagram_longtime(&mut self, conn: &mut Connection) {}
+        fn on_datagram_losted(&mut self, conn: &mut Connection) {}
+        fn on_datagram_recvived(&mut self, conn: &mut Connection) {}
     }
 
     struct ServerStreamContext {
@@ -1948,22 +1934,12 @@ mod tests {
         }
 
         fn on_new_token(&mut self, conn: &mut Connection, token: Vec<u8>) {}
-        fn on_datagram_acked(&mut self,conn:& mut Connection) {
-            
-        }
-        fn on_datagram_drop(&mut self,conn: &mut Connection) {
-            
-        }
-        fn on_datagram_longtime(&mut self,conn: &mut Connection) {
-            
-        }
-        fn on_datagram_losted(&mut self,conn:&mut Connection) {
-            
-        }
+        fn on_datagram_acked(&mut self, conn: &mut Connection) {}
+        fn on_datagram_drop(&mut self, conn: &mut Connection) {}
+        fn on_datagram_longtime(&mut self, conn: &mut Connection) {}
+        fn on_datagram_losted(&mut self, conn: &mut Connection) {}
 
-        fn on_datagram_recvived(&mut self ,conn:& mut Connection) {
-            
-        }
+        fn on_datagram_recvived(&mut self, conn: &mut Connection) {}
     }
 
     // Test Initial packet
