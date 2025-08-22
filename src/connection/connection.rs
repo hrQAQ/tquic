@@ -465,7 +465,7 @@ impl Connection {
         info: &PacketInfo,
         pid: Option<usize>,
     ) -> Result<usize> {
-        info!(" [recv_packet] buf : {:?}", buf);
+        //info!(" [recv_packet] buf : {:?}", buf);
         if buf.is_empty() {
             return Err(Error::Done);
         }
@@ -622,7 +622,7 @@ impl Connection {
         let mut probing_pkt = true;
         #[cfg(feature = "qlog")]
         let mut qframes = vec![];
-        info!("payload : {:?}", payload);
+        //info!("payload : {:?}", payload);
         while !payload.is_empty() {
             let (frame, len) = Frame::from_bytes(&mut payload, hdr.pkt_type)?;
             // read frames from packet
@@ -2728,13 +2728,15 @@ impl Connection {
         let mut cap = out.len();
         let datagram_header = frame::MAX_DATAGRAM_OVERHEAD;
         while let Some(datagram) = self.datagram_map.outcome_datagram(cap - datagram_header) {
-            //get a datagram ready to send
+            
             let length = datagram.0;
             let data = datagram.1;
+            let data_copy=Bytes::from(data.to_vec());
             info!("try_write_datagram_frames test for data:{:?}", data);
             let frame_hdr_len = frame::datagram_header_wire_len(length);
-            let _ = frame::encode_datagram_header(length, &mut out[len..len + frame_hdr_len]);
             let frame_len = frame_hdr_len + data.len();
+            let _ = frame::encode_datagram_header(length, &mut out[len..len + frame_hdr_len]);
+            out[len+frame_hdr_len..len + frame_len].copy_from_slice(&data_copy);
             st.written += frame_len;
             len += frame_len;
             cap -= frame_len;
@@ -2745,6 +2747,26 @@ impl Connection {
                 length: length,
                 data: data,
             });
+                      
+            //get a datagram ready to send
+            /*let length = & datagram.0;
+            let data = datagram.1;
+            let data_copy=Bytes::from(data.to_vec());
+            info!("try_write_datagram_frames test for data:{:?}", data);
+            let frame_hdr_len = frame::datagram_header_wire_len(*length);
+            let frame_len = frame_hdr_len + data.len();
+            let frame=Frame::Datagram { length: *length, data: data };
+            Connection::write_frame_to_packet(frame, out, st)?;
+            len += frame_len;
+            cap -= frame_len;
+            /*let _ = frame::encode_datagram(length, data_copy,&mut out[len..len + frame_hdr_len]);*/
+            st.ack_eliciting = true;
+            st.in_flight = true; //it need reserch
+            st.has_data = true;
+            /*st.frames.push(Frame::Datagram {
+                length: *length,
+                data: data,
+            });*/*/ 
             if cap <= frame::MAX_DATAGRAM_OVERHEAD {
                 break;
             }
