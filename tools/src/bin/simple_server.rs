@@ -21,6 +21,7 @@ use bytes::Bytes;
 use clap::Parser;
 use log::debug;
 use log::error;
+use log::info;
 use mio::event::Event;
 use tquic::Config;
 use tquic::Connection;
@@ -159,7 +160,6 @@ impl Server {
         Ok(())
     }
 }
-
 struct ServerHandler {
     /// Read buffer
     buf: Vec<u8>,
@@ -203,7 +203,7 @@ impl ServerHandler {
 
 impl TransportHandler for ServerHandler {
     fn on_conn_created(&mut self, conn: &mut Connection) {
-        debug!("{} connection is created", conn.trace_id());
+        print!("{} connection is created", conn.trace_id());
 
         if let Some(keylog) = &mut self.keylog {
             if let Ok(keylog) = keylog.try_clone() {
@@ -224,6 +224,20 @@ impl TransportHandler for ServerHandler {
 
     fn on_conn_established(&mut self, conn: &mut Connection) {
         debug!("{} connection is established", conn.trace_id());
+        let data=Bytes::from("Hallo, World");
+        match conn.datagram_send(data.clone(), Some(data.len()), true) {
+            Ok(())=>
+            {
+                info!("{} connetion succeed ot send a datagram:{:?}",conn.trace_id(),data);
+            }
+            Err(_e)=>
+            {
+                error!(
+                "{} failed to send datagram: {}",
+                conn.trace_id(), _e
+                );
+            }
+        }
     }
 
     fn on_conn_closed(&mut self, conn: &mut Connection) {
@@ -235,9 +249,9 @@ impl TransportHandler for ServerHandler {
     }
 
     fn on_stream_readable(&mut self, conn: &mut Connection, stream_id: u64) {
-        /*debug!("{} stream {} is readable", conn.trace_id(), stream_id,);
+        debug!("{} stream {} is readable", conn.trace_id(), stream_id,);
 
-        while let Ok((read, fin)) = conn.stream_read(stream_id, &mut self.buf) {
+        /*while let Ok((read, fin)) = conn.stream_read(stream_id, &mut self.buf) {
             debug!(
                 "{} read {} bytes from stream {}, fin: {}",
                 conn.trace_id(),
@@ -280,30 +294,19 @@ impl TransportHandler for ServerHandler {
         debug!("{} connection has a datagram losted",_conn.trace_id());
     }
     fn on_datagram_recvived(&mut self ,_conn:& mut Connection) {
-        let mut data=Bytes::new();
-        if _conn.datagram_readable()
+        let  data=if _conn.datagram_readable()
         {   
-            data=_conn.datagram_recv().unwrap();
+            _conn.datagram_recv().unwrap()
         }else{
             debug!("why cannt read");
             return;
-        }
-        debug!("server has recvived :{}",std::str::from_utf8(&data).unwrap());
-        debug!("{} connection recevived a datagram ",_conn.trace_id());
-        let data=Bytes::from("Hallo, World,too");
-        match _conn.datagram_send(data.clone(), Some(data.len()), true) {
-            Ok(())=>
-            {
-                debug!("{} connetion succeed ot send a datagram",_conn.trace_id());
-            }
-            Err(e)=>
-            {
-                /*error!(
-                "{} failed to send datagram: {}",
-                self.trace_id, e
-                );
-                Err(e) */
-            }
+        };
+        info!("server has recvived :{:?}",data);
+        info!("{} connection recevived a datagram ",_conn.trace_id());
+
+        match _conn.close(true, 0x00, b"ok") {
+            Ok(_) | Err(Error::Done) => (),
+            Err(e) => panic!("error closing conn (trace_id: {}) : {:?}", _conn.trace_id(), e),
         }
         
     }
@@ -331,6 +334,7 @@ fn main() -> Result<()> {
         // Process IO events
         for event in events.iter() {
             if event.is_readable() {
+                print!("error heppened here");
                 server.process_read_event(event)?;
             }
         }

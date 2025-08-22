@@ -20,6 +20,7 @@ use std::time::Instant;
 use bytes::Bytes;
 use clap::Parser;
 use log::debug;
+use log::info;
 use log::error;
 use mio::event::Event;
 use tquic::Config;
@@ -245,21 +246,20 @@ impl TransportHandler for ClientHandler {
                 error!("stream send failed {:?}", e);
             }
         };*/
-        let data=Bytes::from("Hallo, World");
+        /*let data=Bytes::from("Hallo, World");
         match conn.datagram_send(data.clone(), Some(data.len()), true) {
             Ok(())=>
             {
-                debug!("{} connetion succeed ot send a datagram",conn.trace_id());
+                info!("{} connetion succeed ot send a datagram",conn.trace_id());
             }
-            Err(e)=>
+            Err(_e)=>
             {
-                /*error!(
+                error!(
                 "{} failed to send datagram: {}",
-                self.trace_id, e
+                conn.trace_id(), _e
                 );
-                Err(e) */
             }
-        }
+        }*/
     }
 
     fn on_conn_closed(&mut self, conn: &mut Connection) {
@@ -278,7 +278,7 @@ impl TransportHandler for ClientHandler {
     }
 
     fn on_stream_readable(&mut self, conn: &mut Connection, stream_id: u64) {
-       /*  match conn.stream_read(stream_id, &mut self.buf) {
+         match conn.stream_read(stream_id, &mut self.buf) {
             Ok((n, fin)) => {
                 debug!(
                     "{} read {} bytes from stream {}",
@@ -305,7 +305,7 @@ impl TransportHandler for ClientHandler {
                     e
                 );
             }
-        }*/
+        }
     }
 
     fn on_stream_writable(&mut self, _conn: &mut Connection, _stream_id: u64) {}
@@ -317,6 +317,7 @@ impl TransportHandler for ClientHandler {
     fn on_new_token(&mut self, _conn: &mut Connection, _token: Vec<u8>) {}
     fn on_datagram_acked(&mut self,conn:& mut Connection) {
         debug!("{} connection has a datagram acked",conn.trace_id());
+        info!("a datagram acked");
     }
     fn on_datagram_drop(&mut self,conn: &mut Connection) {
         debug!("{} connection droped a datagram",conn.trace_id());
@@ -331,18 +332,27 @@ impl TransportHandler for ClientHandler {
     fn on_datagram_recvived(&mut self ,conn:& mut Connection) {
         debug!("{} connection recevived a datagram ",conn.trace_id());
 
-        let mut data=Bytes::new();
-        if conn.datagram_readable()
+        let  data=if conn.datagram_readable()
         {   
-            data=conn.datagram_recv().unwrap();
+            conn.datagram_recv().unwrap()
         }else{
             debug!("why cannt read");
             return;
-        }
-        debug!("server has recvived :{}",std::str::from_utf8(&data).unwrap());
-        match conn.close(true, 0x00, b"ok") {
-            Ok(_) | Err(Error::Done) => (),
-            Err(e) => panic!("error closing conn: {:?}", e),
+        };
+        info!("client has recvived :{:?}",data);
+        let new_data=Bytes::from("Hallo, World,too");
+        match conn.datagram_send(new_data.clone(), Some(new_data.len()), true) {
+            Ok(())=>
+            {
+                 info!("{} connetion succeed ot send a datagram: {:?}",conn.trace_id(),new_data);
+            }
+            Err(e)=>
+            {
+                error!(
+                "{} failed to send datagram: {}",
+                conn.trace_id(), e
+                );
+            }
         }
     }
 }

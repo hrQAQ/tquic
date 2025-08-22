@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use std::collections::VecDeque;
+use log::info;
 use crate::connection::datagram;
 use crate::frame;
 use crate::frame::Frame;
@@ -114,8 +115,12 @@ impl DatagramMap
     //send a datagram from application to out_queue
     pub fn send_datagram(&mut self,data: Bytes,length:Option<usize>,drop_if:bool)->Result<u64,Error>
     {
+        info!("send_datagram test for data:{:?}",data);
+        info!("local_max_datagram_size: {}",self.local_max_datagram_frame_size);
+        info!("peer_max_datagram_size: {}",self.peer_max_datagram_frame_size);
         if !self.peer_is_enable()
         {
+            info!("!self.peer_is_enable");
             return Err(Error::ProtocolViolation);
         }
         if self.out_max_size<data.len() as u64
@@ -127,12 +132,12 @@ impl DatagramMap
         {
             if drop_if
             {
-                while(self.out_total_size+(data.len() as u64)>self.out_max_size)
+                while self.out_total_size+ data.len() as u64>self.out_max_size 
                 {
                     if let Some(datagramunit)=self.out_queue.pop_front()
                     {
                         drop_num+=1;
-                        self.out_total_size-=(data.len() as u64);
+                        self.out_total_size-= data.len() as u64 ;
                     }else{
                         break;
                     }
@@ -141,7 +146,6 @@ impl DatagramMap
                 return Err(Error::DatagramFrameBeyondMemory);
             }
         }
-
         self.out_queue.push_back(
             Datagramunit::new(data.clone(),Some(data.len()), self.index_out)
             );
@@ -161,12 +165,14 @@ impl DatagramMap
         }else{
             let datagramunit=self.out_queue.pop_front().unwrap();
             self.out_total_size-=datagramunit.data.len() as u64;
+            info!("outcome_datagram test for data:{:?}",datagramunit.data);
             return Some((Some(datagramunit.data.len()), datagramunit.data.clone()));
         }
 
     }
     //recv a datagram from connection to in_queue
     pub fn incoming_datagram(&mut self,length:Option<usize>, data:Bytes)->Result<usize,Error>{
+        info!("incoming_datagram test for data:{:?}",data);
         if !self.local_is_enable()
         {
             return Err(Error:: ProtocolViolation);
@@ -196,6 +202,7 @@ impl DatagramMap
     {
         if let Some(datagramunit)=self.in_queue.pop_front(){
             self.in_total_size-=datagramunit.data.len() as u64;
+            info!("get_datagram test for data:{:?}",datagramunit.data);
             Some((datagramunit.length,datagramunit.data.clone()))
         }else{
             None

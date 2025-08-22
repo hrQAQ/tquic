@@ -17,7 +17,7 @@ use std::net::Ipv4Addr;
 use std::net::Ipv6Addr;
 use std::net::SocketAddrV4;
 use std::net::SocketAddrV6;
-
+use log::info;
 use crate::codec;
 use crate::codec::Decoder;
 use crate::codec::Encoder;
@@ -132,6 +132,7 @@ pub struct TransportParams {
 impl TransportParams {
     // Decode transport parameters from the given buffer.
     pub(crate) fn decode(mut buf: &[u8], is_server: bool) -> Result<(TransportParams, usize)> {
+        info!("decode buf :{:?}",buf);
         let len = buf.len();
         let mut tp = TransportParams::default();
         let mut found_params = HashSet::new();
@@ -139,6 +140,7 @@ impl TransportParams {
         while !buf.is_empty() {
             let id = buf.read_varint()?;
             if found_params.contains(&id) {
+                info!("if found_params.contains(&id)");
                 return Err(Error::TransportParameterError);
             }
             found_params.insert(id);
@@ -149,6 +151,7 @@ impl TransportParams {
                 0x0000 => {
                     // This transport parameter is only sent by a server.
                     if is_server {
+                        info!("                0x0000");
                         return Err(Error::TransportParameterError);
                     }
                     tp.original_destination_connection_id = Some(ConnectionId::new(val));
@@ -162,6 +165,7 @@ impl TransportParams {
                     // This transport parameter MUST NOT be sent by a client
                     // but MAY be sent by a server.
                     if is_server {
+                        info!("                0x0002");
                         return Err(Error::TransportParameterError);
                     }
                     tp.stateless_reset_token = Some(u128::from_be_bytes(
@@ -176,6 +180,7 @@ impl TransportParams {
                     tp.max_udp_payload_size = val.read_varint()?;
                     // Values below 1200 are invalid.
                     if tp.max_udp_payload_size < 1200 {
+                        info!("                0x0003");
                         return Err(Error::TransportParameterError);
                     }
                 }
@@ -199,6 +204,7 @@ impl TransportParams {
                 0x0008 => {
                     let max = val.read_varint()?;
                     if max > MAX_STREAMS_PER_TYPE {
+                        info!("                0x0008");
                         return Err(Error::TransportParameterError);
                     }
                     tp.initial_max_streams_bidi = max;
@@ -207,6 +213,7 @@ impl TransportParams {
                 0x0009 => {
                     let max = val.read_varint()?;
                     if max > MAX_STREAMS_PER_TYPE {
+                        info!("                0x0009");
                         return Err(Error::TransportParameterError);
                     }
                     tp.initial_max_streams_uni = max;
@@ -216,6 +223,7 @@ impl TransportParams {
                     let ack_delay_exponent = val.read_varint()?;
                     // Values above 20 are invalid.
                     if ack_delay_exponent > 20 {
+                        info!("                0x000a");
                         return Err(Error::TransportParameterError);
                     }
                     tp.ack_delay_exponent = ack_delay_exponent;
@@ -225,6 +233,7 @@ impl TransportParams {
                     let max_ack_delay = val.read_varint()?;
                     // Values of 2^14 or greater are invalid.
                     if max_ack_delay >= 2_u64.pow(14) {
+                        info!("                0x000b");
                         return Err(Error::TransportParameterError);
                     }
                     tp.max_ack_delay = max_ack_delay;
@@ -237,6 +246,7 @@ impl TransportParams {
                 0x000d => {
                     // This transport parameter is only sent by a server.
                     if is_server {
+                        info!("                0x000d");
                         return Err(Error::TransportParameterError);
                     }
                     tp.preferred_address = Some(PreferredAddress::from_bytes(val)?.0);
@@ -247,6 +257,7 @@ impl TransportParams {
                     // The value of active_connection_id_limit parameter MUST
                     // be at least 2.
                     if limit < 2 {
+                        info!("                0x000d");
                         return Err(Error::TransportParameterError);
                     }
                     tp.active_conn_id_limit = limit;
@@ -259,6 +270,7 @@ impl TransportParams {
                 0x00010 => {
                     // This transport parameter is only sent by a server.
                     if is_server {
+                        info!("                0x0010");
                         return Err(Error::TransportParameterError);
                     }
                     tp.retry_source_connection_id = Some(ConnectionId::new(val));
@@ -267,8 +279,10 @@ impl TransportParams {
                 0x0020 => {
                     let max_datagram_frame_size = val.read_varint()?;
                     /*if max_datagram_frame_size < 0 /*|| max_datagram_frame_size > 65535*/{
+                    
                         return Err(Error::TransportParameterError);
                     }*/
+                    info!("0x0020:{}",max_datagram_frame_size);
                     tp.max_datagram_frame_size = max_datagram_frame_size;
                 }
 
@@ -294,6 +308,7 @@ impl TransportParams {
         is_server: bool,
         mut buf: &mut [u8],
     ) -> Result<usize> {
+        info!("encode buf :{:?}",buf);
         let len = buf.len();
 
         if is_server {
@@ -407,7 +422,7 @@ impl TransportParams {
                 buf.write(scid)?;
             }
         }
-
+        info!("encode max_datasize: {}",tp.max_datagram_frame_size);
         if tp.max_datagram_frame_size != 0 {
             buf.write_varint(0x0020)?;
             buf.write_varint(codec::encode_varint_len(tp.max_datagram_frame_size) as u64)?;
@@ -425,9 +440,9 @@ impl TransportParams {
         }
 
         // no matter what, always encode max_datagram_frame_size
-        buf.write_varint(0x0020)?;
-        buf.write_varint(codec::encode_varint_len(tp.max_datagram_frame_size) as u64)?;
-        buf.write_varint(tp.max_datagram_frame_size)?;
+        //buf.write_varint(0x0020)?;
+        //buf.write_varint(codec::encode_varint_len(tp.max_datagram_frame_size) as u64)?;
+        //buf.write_varint(tp.max_datagram_frame_size)?;
         /*  if tp.max_datagram_frame_size!=0
         {
             buf.write_varint(0x0020)?;

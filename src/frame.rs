@@ -13,7 +13,7 @@
 // limitations under the License.
 
 use bytes::Bytes;
-
+use log::info;
 use crate::codec;
 use crate::codec::Decoder;
 use crate::codec::Encoder;
@@ -166,6 +166,7 @@ pub enum Frame {
 
     /// DATAGRAM frame (type=0x30 and 0x31) is used to transmit application data 
     /// in an unreliable manner.
+    
     Datagram
     {
         length: Option<usize>,
@@ -397,6 +398,8 @@ impl Frame {
         };
 
         if !Frame::validate_frame(pkt, &frame) {
+            info!("packet type: {:?}",pkt);
+            info!("frame type: {}",frame_type);
             return Err(Error::InvalidPacket);
         }
 
