@@ -74,9 +74,11 @@ use ring::hmac;
 use rustc_hash::FxHashSet;
 
 use crate::codec::VINT_MAX;
+use crate::connection::datagram;
 use crate::connection::stream;
 use crate::tls::TlsSession;
 use crate::token::ResetToken;
+use crate::trans_param::DatagramConfig;
 use crate::trans_param::TransportParams;
 
 /// The current QUIC wire version.
@@ -356,6 +358,9 @@ pub struct Config {
 
     /// Find TLS config according to server name.
     tls_config_selector: Option<Arc<dyn tls::TlsConfigSelector>>,
+
+    //
+    datagram_config:DatagramConfig,
 }
 
 impl Config {
@@ -405,6 +410,7 @@ impl Config {
             recovery: RecoveryConfig::default(),
             multipath: MultipathConfig::default(),
             tls_config_selector: None,
+            datagram_config:DatagramConfig::default(),
         })
     }
 
@@ -780,8 +786,19 @@ impl Config {
         }
     }
 
-    pub fn set_local_max_datagram_frame_size(&mut self, max_datagram_frame_size: u64) {
+    pub fn set_local_datagram_config(&mut self, 
+        max_datagram_frame_size:u64,
+        send_timeout:u64,
+        priority:u8,
+        datagram_event_mask:u8) {
         self.local_transport_params.max_datagram_frame_size = max_datagram_frame_size;
+        // not need set max delay
+
+        self.datagram_config=DatagramConfig::new(max_datagram_frame_size,
+            send_timeout,
+            priority,
+            datagram_event_mask);
+        
     }
 }
 

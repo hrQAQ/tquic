@@ -19,12 +19,14 @@ use crate::Error;
 use bytes::Bytes;
 use log::info;
 use std::collections::VecDeque;
+use crate::DatagramConfig;
+use std::time::{Instant, Duration};
 #[derive(Debug, Clone)]
-
 pub struct Datagramunit {
     data: Bytes,
     length: Option<usize>,
     datagram_id: usize,
+    timer_in:Instant,
     /*
     the time arrive queue
     the priority
@@ -32,14 +34,16 @@ pub struct Datagramunit {
      */
 }
 impl Datagramunit {
-    pub fn new(data: Bytes, length: Option<usize>, datagram_id: usize) -> Self {
+    pub fn new(data: Bytes, length: Option<usize>, datagram_id: usize,timer_in:Instant) -> Self {
         Self {
             data: data,
             length: length,
             datagram_id: datagram_id,
+            timer_in:timer_in,
         }
     }
 }
+
 pub struct DatagramMap {
     /// Sender states
     out_queue: VecDeque<Datagramunit>,
@@ -53,9 +57,21 @@ pub struct DatagramMap {
     in_max_size: u64,
     local_max_datagram_frame_size: u64,
     peer_max_datagram_frame_size: u64,
+
+    send_timeout:u64,
+
+    priority:u8,
+
+    datagram_event_mask:u8,
+
 }
 impl DatagramMap {
-    pub fn new(peer_max_datagram_frame_size: u64, local_max_datagram_frame_size: u64) -> Self {
+    pub fn new(peer_max_datagram_frame_size: u64,
+            local_max_datagram_frame_size: u64,
+            send_timeout:u64,
+            priority:u8,
+            datagram_event_mask:u8,
+            ) -> Self {
         Self {
             out_queue: VecDeque::new(),
             index_out: 0,
@@ -67,6 +83,9 @@ impl DatagramMap {
             in_max_size: 1024 * 1024,
             local_max_datagram_frame_size,
             peer_max_datagram_frame_size,
+            send_timeout,
+            priority,
+            datagram_event_mask,
         }
     }
     pub fn peer_is_enable(&self) -> bool {
@@ -142,25 +161,46 @@ impl DatagramMap {
             data.clone(),
             Some(data.len()),
             self.index_out,
+            Instant::now(),
         ));
         self.out_total_size += data.len() as u64;
         self.index_out += 1; //change the index
+        
+        // the frist datagram ,start the timer
+        if self.out_queue.len() == 1 {
+
+        }
+
         return Ok(drop_num.clone());
     }
     //send a datagram from out_queue
     pub fn outcome_datagram(&mut self, max_payload_size: usize) -> Option<(Option<usize>, Bytes)> {
-        let Some(datagramunit) = self.out_queue.front() else {
-            return None; // out_queue is empty , no datagram to send
-        };
-        if datagramunit.data.len() > max_payload_size {
-            return None;
-        } else {
-            let datagramunit = self.out_queue.pop_front().unwrap();
-            self.out_total_size -= datagramunit.data.len() as u64;
-            info!("outcome_datagram test for data:{:?}", datagramunit.data);
-            return Some((Some(datagramunit.data.len()), datagramunit.data.clone()));
+        // process time out datagrams
+        loop {
+            let Some(datagramunit) = self.out_queue.front() else {
+                return None; // out_queue is empty,no datagram to send
+            };
+
+            let elapsed = Instant::now().duration_since(datagramunit.timer_in);
+            let timeout = Duration::from_millis(self.send_timeout);
+            if elapsed >= timeout 
+            {
+                let datagramunit = self.out_queue.pop_front().unwrap();
+                self.out_total_size -= datagramunit.data.len() as u64;
+                info!("drop datagram fot send_timeout:{:?}", datagramunit.datagram_id);
+                continue;
+            }
+            if datagramunit.data.len() > max_payload_size {
+                return None;
+            } else {
+                let datagramunit = self.out_queue.pop_front().unwrap();
+                self.out_total_size -= datagramunit.data.len() as u64;
+                info!("outcome_datagram test for data:{:?}", datagramunit.data);
+                return Some((Some(datagramunit.data.len()), datagramunit.data.clone()));
+            }
         }
     }
+
     //recv a datagram from connection to in_queue
     pub fn incoming_datagram(
         &mut self,
@@ -185,7 +225,7 @@ impl DatagramMap {
             }
         }
         self.in_queue
-            .push_back(Datagramunit::new(data.clone(), length, self.index_in));
+            .push_back(Datagramunit::new(data.clone(), length, self.index_in,Instant::now()));
         self.in_total_size += data.len() as u64;
         self.index_in += 1;
         Ok(self.index_in - 1)
@@ -216,4 +256,13 @@ impl DatagramMap {
     pub fn need_send_datagram_frames(&self) -> bool {
         !self.if_out_empty()
     }
+    pub fn get_mask(&self)->u8
+    {
+        return self.datagram_event_mask
+    }
+    pub fn get_priority(&self)->u8
+    {
+        self.priority
+    }
+
 }

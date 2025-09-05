@@ -249,9 +249,11 @@ impl Connection {
         let peer_transport_params = TransportParams::default();
         let datagram_map = datagram::DatagramMap::new(
             peer_transport_params.max_datagram_frame_size,
-            conf.local_transport_params.max_datagram_frame_size,
-        );
-
+            conf.datagram_config.local_max_datagram_frame_size,
+            conf.datagram_config.send_timeout,
+            conf.datagram_config.prioroity,
+            conf.datagram_config.datagram_event_mask);
+        //set datagram_map
         let mut tls_session = conf.new_tls_session(server_name, is_server)?;
         if let Some(tls_config_selector) = &conf.tls_config_selector {
             tls_session.set_config_selector(tls_config_selector.clone());
@@ -2093,11 +2095,13 @@ impl Connection {
         // Write buffered frames
         self.try_write_buffered_frames(out, st, pkt_type, path_id)?;
 
+        // it is risk
+
+        self.try_write_stream_frames(out, st, pkt_type, path_id,self.datagram_map.get_priority(),false)?;
         // Write DATAGRAM frames
         self.try_write_datagram_frames(out, st, pkt_type, path_id)?;
-
         // Write STREAM frames
-        self.try_write_stream_frames(out, st, pkt_type, path_id)?;
+        self.try_write_stream_frames(out, st, pkt_type, path_id,self.datagram_map.get_priority(),true)?;
 
         // Write a NEW_TOKEN frame
         self.try_write_new_token_frame(out, st, pkt_type, path_id)?;
@@ -2623,6 +2627,8 @@ impl Connection {
         st: &mut FrameWriteStatus,
         pkt_type: PacketType,
         path_id: usize,
+        datagram_priotrity:u8,
+        is_lower:bool,
     ) -> Result<()> {
         let out = &mut out[st.written..];
         if (pkt_type != PacketType::OneRTT && pkt_type != PacketType::ZeroRTT)
@@ -2636,7 +2642,13 @@ impl Connection {
         let mut len = 0;
         let mut cap: usize = out.len();
 
-        while let Some(stream_id) = self.streams.peek_sendable() {
+        while let Some((frame_priority, stream_id)) = self.streams.peek_sendable() {
+            if frame_priority>datagram_priotrity && !is_lower
+            {
+                // next run try_write_stream_frame
+                info!("the {} stream frame priority lower than datagram, so all stream delay",stream_id);
+                continue;
+            }
             let stream = match self.streams.get_mut(stream_id) {
                 // We should not send frames for streams that were already stopped.
                 Some(s) if !s.send.is_stopped() => s,
@@ -4209,6 +4221,10 @@ impl Connection {
         } else {
             return None;
         }
+    }
+
+    pub fn datagram_mask(&self)->u8{
+        self.datagram_map.get_mask()
     }
     /// Return the internal identifier of the connection on the Endpoint. The
     /// internal identifier is not the same as the Connection ID as described

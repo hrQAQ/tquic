@@ -606,6 +606,41 @@ impl PreferredAddress {
     }
 }
 
+#[derive(Clone)]
+pub struct DatagramConfig
+{
+    pub local_max_datagram_frame_size: u64,
+
+    pub send_timeout:u64,
+
+    pub prioroity:u8,
+    
+    pub datagram_event_mask:u8,
+}
+
+impl DatagramConfig {
+    pub fn new(
+    local_max_datagram_frame_size: u64,
+    send_timeout:u64,
+    prioroity:u8,
+    datagram_event_mask:u8,
+    )->Self
+    {
+        Self { 
+        local_max_datagram_frame_size:local_max_datagram_frame_size, 
+        send_timeout: send_timeout,
+        prioroity: prioroity,
+        datagram_event_mask: datagram_event_mask }
+    }
+    pub fn default()->Self
+    {
+        Self { 
+        local_max_datagram_frame_size:0, 
+        send_timeout: 0,
+        prioroity: 0,
+        datagram_event_mask: 0 }
+    }
+}
 #[cfg(test)]
 mod tests {
     use super::*;

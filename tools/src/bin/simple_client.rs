@@ -65,6 +65,19 @@ pub struct ClientOpt {
     /// Maximum datagram frame size in bytes (for DATAGRAM extension).
     #[clap(long, default_value = "1200", value_name = "SIZE")]
     pub max_datagram_frame_size: usize,
+
+
+    /// Send timeout (in microseconds) for datagrams.
+    #[clap(long, default_value = "500000", value_name = "US")]
+    pub send_timeout: u64,
+
+    /// Datagram priority (relative to streams).
+    #[clap(long, default_value = "31", value_name = "PRIO")]
+    pub priority: u8,
+
+    /// Datagram event mask (bitwise OR of DatagramEventMask flags).
+    #[clap(long, value_name = "DATAGRAMMASK", default_value = "0")]
+    pub datagram_event_mask: u8,
 }
 
 const MAX_BUF_SIZE: usize = 65536;
@@ -89,6 +102,11 @@ struct Client {
 
 impl Client {
     fn new(option: &ClientOpt) -> Result<Self> {
+
+        if option.datagram_event_mask>=32
+        {
+            return Err("the datagram_event_mask is invalid".into());
+        }
         let mut config = Config::new()?;
         config.set_max_idle_timeout(option.idle_timeout);
 
@@ -106,7 +124,12 @@ impl Client {
         )?);
 
         // Set max_datagram_frame_size
-        config.set_local_max_datagram_frame_size(option.max_datagram_frame_size as u64);
+        config.set_local_datagram_config(
+            option.max_datagram_frame_size as u64,
+            option.send_timeout,
+            option.priority,
+            option.datagram_event_mask      
+        );
 
         Ok(Client {
             endpoint: Endpoint::new(Box::new(config), false, Box::new(handlers), sock.clone()),
