@@ -2643,7 +2643,7 @@ impl Connection {
         let mut cap: usize = out.len();
 
         while let Some((frame_priority, stream_id)) = self.streams.peek_sendable() {
-            if frame_priority>datagram_priotrity && !is_lower
+            if frame_priority<datagram_priotrity && !is_lower
             {
                 // next run try_write_stream_frame
                 info!("the {} stream frame priority lower than datagram, so all stream delay",stream_id);
@@ -5066,7 +5066,7 @@ pub(crate) mod tests {
             conf.enable_multipath(false);
             conf.enable_dplpmtud(true);
             conf.enable_pacing(false);
-
+            
             let application_protos = vec![b"h3".to_vec()];
             let tls_config = if !is_server {
                 TlsConfig::new_client_config(application_protos, true)?
@@ -5081,6 +5081,11 @@ pub(crate) mod tests {
                 tls_config
             };
             conf.set_tls_config(tls_config);
+            conf.set_local_datagram_config(
+                1024,
+                5000,
+                0,
+                31);
 
             Ok(conf)
         }
@@ -5108,6 +5113,12 @@ pub(crate) mod tests {
             }
         }
 
+        pub fn new_test_datagram_frame(content: &[u8])->frame::Frame
+        {
+            frame::Frame::Datagram { 
+                length: Some(content.len()),
+                data: Bytes::copy_from_slice(content) }
+        }
         /// Assemble new version negotiation packet.
         fn new_test_version_negotiation_packet(
             dcid: &ConnectionId,
@@ -6917,6 +6928,34 @@ pub(crate) mod tests {
         Ok(())
     }
 
+    
+    #[test]
+    fn recv_packet_datagram_frame() -> Result<()> {
+        let mut test_pair = TestPair::new_with_test_config()?;
+        assert_eq!(test_pair.handshake(), Ok(()));
+
+        // Client send OneRTT packet
+        let content = "client one rtt data";
+        let frame = TestPair::new_test_datagram_frame(content.as_bytes());
+        let packet =
+            TestPair::conn_build_packet(&mut test_pair.client, PacketType::OneRTT, &[frame])?;
+        let info = TestPair::new_test_packet_info(false);
+
+        // Server recv OneRTT packet
+        TestPair::conn_packets_in(&mut test_pair.server, vec![(packet, info)])?;
+
+        let (_,datagram)=test_pair.server.datagram_map.get_datagram().unwrap();
+        assert_eq!(datagram,Bytes::from(content));
+        Ok(())
+
+        /*let stream = test_pair.server.streams.get_mut(0).unwrap();
+        assert!(stream.is_readable());
+
+        let mut buf = vec![0; 128];
+        assert_eq!(stream.recv.read(&mut buf)?, (content.len(), false));
+        assert_eq!(content.as_bytes(), &buf[..content.len()]);
+        Ok(())*/
+    }
     #[test]
     fn recv_packet_skipped_packet_number() -> Result<()> {
         let mut client_config = TestPair::new_test_config(false)?;
@@ -8162,6 +8201,174 @@ pub(crate) mod tests {
                 .initiate_key_update(space, false),
             Err(Error::Done)
         );
+
+        Ok(())
+    }
+    #[test]
+    fn datagram_multiple_send_and_receive() -> Result<()> {
+        // 1. Initialize test pair and complete handshake
+        let mut test_pair = TestPair::new_with_test_config()?;
+        assert_eq!(test_pair.handshake(), Ok(()));
+        // 2. Define test data: multiple datagram payloads
+        //    Note: Datagrams are unordered in theory, but will be received in order in this test environment
+        let test_data = vec![
+            Bytes::from_static(b"First datagram payload"),
+            Bytes::from_static(b"Second datagram with longer content"),
+            Bytes::from_static(b"Final datagram"),
+        ];
+        // 3. Loop through sending datagrams and verify reception
+        for data in test_data {
+            // Client sends datagram
+            let send_result = test_pair.client.datagram_map.send_datagram(data.clone(), None, false);
+            assert!(send_result.is_ok(), "Failed to send datagram: {:?}", send_result);
+            let drop_num = send_result.unwrap();
+            assert_eq!(drop_num, 0, "No datagrams should be dropped during normal operation");
+
+            // Get outgoing packets from client and pass to server (simulate network transmission)
+            let packets = TestPair::conn_packets_out(&mut test_pair.client)?;
+            TestPair::conn_packets_in(&mut test_pair.server, packets)?;
+
+            // Server reads datagram from its incoming queue
+            let recv_result = test_pair.server.datagram_map.get_datagram();
+            assert!(recv_result.is_some(), "Server should receive the sent datagram");
+        
+            let (recv_len, recv_data) = recv_result.unwrap();
+            // Verify length matches original data
+            assert_eq!(recv_len, Some(data.len()), "Received datagram length mismatch");
+            // Verify content matches original data
+            assert_eq!(recv_data, data, "Received datagram content does not match sent data");
+        }
+
+        // 4. Verify incoming queue is empty after all datagrams are processed
+        assert!(test_pair.server.datagram_map.if_in_empty(), 
+            "Server datagram queue should be empty after all receives");
+                Ok(())
+    }
+    #[test]
+    fn datagram_operations() -> Result<()> {
+        // Initialize test environment and complete handshake
+        let mut test_pair = TestPair::new_with_test_config()?;
+        assert_eq!(test_pair.handshake(), Ok(()), "Handshake must complete successfully");
+
+        // Configure test parameters
+        let test_data = Bytes::from_static(b"Datagram payload over QUIC");
+        let send_timeout = 500; // 500ms timeout for testing
+        let priority = 2; // Medium priority (0-7 scale)
+
+        // 1. Verify initial datagram configuration
+        assert!(test_pair.client.datagram_map.peer_is_enable(), 
+                "Peer should support datagrams");
+        assert!(test_pair.client.datagram_map.local_is_enable(), 
+                "Local should support datagrams");
+        assert_eq!(test_pair.client.datagram_map.get_priority(), 0, 
+                "Default priority should be 0");
+
+        // 2. Configure datagram parameters
+        test_pair.client.datagram_map.set_send_timeout(send_timeout);
+        // Note: Assuming we add a setter for priority (as in original DatagramMap struct)
+        // test_pair.client.datagram_map.set_priority(priority);
+        assert_eq!(test_pair.client.datagram_map.get_send_timeout(), send_timeout, 
+                "Send timeout configuration failed");
+        // assert_eq!(test_pair.client.datagram_map.get_priority(), priority, 
+        //         "Priority configuration failed");
+
+        // 3. Check available space before sending
+        let initial_space = test_pair.client.datagram_map.send_available_space();
+        assert!(initial_space > 0, "Initial send space should be available");
+
+        // 4. Send datagram from client
+        let send_result = test_pair.client.datagram_map.send_datagram(test_data.clone(), None, false);
+        assert!(send_result.is_ok(), "Failed to send datagram: {:?}", send_result);
+        assert_eq!(send_result.unwrap(), 0, "No datagrams should be dropped initially");
+
+        // 5. Verify client state after sending
+        assert_eq!(test_pair.client.datagram_map.send_available_space(), 
+                initial_space - test_data.len(), 
+                "Available space should decrease after sending");
+        assert!(!test_pair.client.datagram_map.if_out_empty(), 
+                "Outgoing queue should not be empty after sending");
+
+        // 6. Transmit packets to server and process
+        let packets = TestPair::conn_packets_out(&mut test_pair.client)?;
+        TestPair::conn_packets_in(&mut test_pair.server, packets)?;
+
+        // 7. Verify server received the datagram
+        assert!(!test_pair.server.datagram_map.if_in_empty(), 
+                "Server should have received datagram");
+        assert_eq!(test_pair.server.datagram_map.recv_available_space(), 
+                test_pair.server.datagram_map.get_in_max_size() as usize - test_data.len(), 
+                "Server available space should decrease after receiving");
+
+        // 8. Read datagram from server and verify content
+        let recv_result = test_pair.server.datagram_map.get_datagram();
+        assert!(recv_result.is_some(), "Server should be able to read datagram");
+    
+        let (recv_len, recv_data) = recv_result.unwrap();
+        assert_eq!(recv_len, Some(test_data.len()), "Datagram length mismatch");
+        assert_eq!(recv_data, test_data, "Datagram content mismatch");
+
+        // 9. Verify server state after reading
+        assert!(test_pair.server.datagram_map.if_in_empty(), 
+                "Server queue should be empty after reading");
+        assert_eq!(test_pair.server.datagram_map.recv_available_space(), 
+                test_pair.server.datagram_map.get_in_max_size() as usize, 
+                "Server available space should reset after reading");
+
+        // 10. Test timeout behavior (simulate expired datagram)
+        let timeout_data = Bytes::from_static(b"Timeout test datagram");
+        test_pair.client.datagram_map.send_datagram(timeout_data.clone(), None, false)?;
+    
+        // Fast-forward time beyond timeout (using test timer control if available)
+        // Note: In real implementation, you'd need timer manipulation or longer sleep
+        std::thread::sleep(std::time::Duration::from_millis(send_timeout + 100));
+    
+        // Trigger timeout check and verify datagram was dropped
+        let _ = test_pair.client.datagram_map.check_timeout();
+        assert!(test_pair.client.datagram_map.if_out_empty(), 
+                "Timed-out datagram should be removed from queue");
+
+        Ok(())
+    }
+
+    #[test]
+    fn datagram_queue_overflow() -> Result<()> {
+        // Initialize test environment and complete handshake
+        let mut test_pair = TestPair::new_with_test_config()?;
+        assert_eq!(test_pair.handshake(), Ok(()), "Handshake should complete successfully");
+
+        // 1. Configure small send queue capacity (20 bytes total)
+        test_pair.client.datagram_map.set_out_max_size(20); // Set maximum queue capacity
+        let small_data = Bytes::from_static(b"12345"); // 5-byte payload
+        let drop_if = true; // Drop oldest datagrams when queue is full
+
+        // 2. Send 5 datagrams (total 25 bytes, exceeding 20-byte limit)
+        for i in 0..5 {
+            let send_result = test_pair.client.datagram_map.send_datagram(
+                small_data.clone(), 
+                None, 
+                drop_if
+            );
+        
+            assert!(send_result.is_ok(), "Failed to send datagram {}", i);
+        
+            // First 4 datagrams should send normally (4*5=20 bytes)
+            if i < 4 {
+                assert_eq!(send_result.unwrap(), 0, "Should not drop datagram {}", i);
+            } else {
+                // 5th datagram should cause 1 oldest datagram to be dropped
+                assert_eq!(send_result.unwrap(), 1, "Should drop 1 datagram when queue overflows");
+            }
+        }
+
+        // 3. Verify queue contains exactly 4 most recent datagrams (20 bytes total)
+        assert_eq!(test_pair.client.datagram_map.get_out_total_size(), 20);
+    
+        // 4. Verify actual count of datagrams in queue
+        let mut count = 0;
+        while let Some(_) = test_pair.client.datagram_map.outcome_datagram(100) {
+            count += 1;
+        }
+        assert_eq!(count, 4, "Queue should contain 4 most recent datagrams after overflow");
 
         Ok(())
     }

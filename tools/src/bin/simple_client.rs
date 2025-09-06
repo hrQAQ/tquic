@@ -76,7 +76,7 @@ pub struct ClientOpt {
     pub priority: u8,
 
     /// Datagram event mask (bitwise OR of DatagramEventMask flags).
-    #[clap(long, value_name = "DATAGRAMMASK", default_value = "0")]
+    #[clap(long, value_name = "DATAGRAMMASK", default_value = "31")]
     pub datagram_event_mask: u8,
 }
 
