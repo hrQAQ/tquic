@@ -2644,7 +2644,7 @@ impl Connection {
             {
                 // next run try_write_stream_frame
                 info!("the {} stream frame priority lower than datagram, so all stream delay",stream_id);
-                continue;
+                return ;
             }
             let stream = match self.streams.get_mut(stream_id) {
                 // We should not send frames for streams that were already stopped.
