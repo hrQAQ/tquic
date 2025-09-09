@@ -2640,7 +2640,7 @@ impl Connection {
         let mut cap: usize = out.len();
 
         while let Some((frame_priority, stream_id)) = self.streams.peek_sendable() {
-            if frame_priority<datagram_priotrity && !is_lower  || !self.datagram_map.if_out_empty()
+            if  !self.datagram_map.if_out_empty() && frame_priority<datagram_priotrity && !is_lower  
             {
                 // next run try_write_stream_frame
                 info!("the {} stream frame priority lower than datagram, so all stream delay",stream_id);
