@@ -211,7 +211,6 @@ impl DatagramMap {
             } else {
                 let datagramunit = self.out_queue.pop_front().unwrap();
                 self.out_total_size -= datagramunit.data.len() as u64;
-                info!("outcome_datagram test for data: {:?}", datagramunit.data);
                 return Some((Some(datagramunit.data.len()), datagramunit.data.clone()));
             }
         }
@@ -252,7 +251,6 @@ impl DatagramMap {
         length: Option<usize>,
         data: Bytes,
     ) -> Result<usize, Error> {
-        info!("incoming_datagram test for data: {:?}", data);
         if !self.local_is_enable() { 
             return Err(Error::ProtocolViolation);
         }
@@ -280,7 +278,6 @@ impl DatagramMap {
     pub fn get_datagram(&mut self) -> Option<(Option<usize>, Bytes)> {
         if let Some(datagramunit) = self.in_queue.pop_front() {
             self.in_total_size -= datagramunit.data.len() as u64;
-            info!("get_datagram test for data: {:?}", datagramunit.data);
             Some((datagramunit.length, datagramunit.data.clone()))
         } else {
             None

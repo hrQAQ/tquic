@@ -132,7 +132,6 @@ pub struct TransportParams {
 impl TransportParams {
     // Decode transport parameters from the given buffer.
     pub(crate) fn decode(mut buf: &[u8], is_server: bool) -> Result<(TransportParams, usize)> {
-        info!("decode buf :{:?}", buf);
         let len = buf.len();
         let mut tp = TransportParams::default();
         let mut found_params = HashSet::new();
@@ -151,7 +150,6 @@ impl TransportParams {
                 0x0000 => {
                     // This transport parameter is only sent by a server.
                     if is_server {
-                        info!("                0x0000");
                         return Err(Error::TransportParameterError);
                     }
                     tp.original_destination_connection_id = Some(ConnectionId::new(val));
@@ -165,7 +163,6 @@ impl TransportParams {
                     // This transport parameter MUST NOT be sent by a client
                     // but MAY be sent by a server.
                     if is_server {
-                        info!("                0x0002");
                         return Err(Error::TransportParameterError);
                     }
                     tp.stateless_reset_token = Some(u128::from_be_bytes(
@@ -180,7 +177,6 @@ impl TransportParams {
                     tp.max_udp_payload_size = val.read_varint()?;
                     // Values below 1200 are invalid.
                     if tp.max_udp_payload_size < 1200 {
-                        info!("                0x0003");
                         return Err(Error::TransportParameterError);
                     }
                 }
@@ -204,7 +200,6 @@ impl TransportParams {
                 0x0008 => {
                     let max = val.read_varint()?;
                     if max > MAX_STREAMS_PER_TYPE {
-                        info!("                0x0008");
                         return Err(Error::TransportParameterError);
                     }
                     tp.initial_max_streams_bidi = max;
@@ -213,7 +208,6 @@ impl TransportParams {
                 0x0009 => {
                     let max = val.read_varint()?;
                     if max > MAX_STREAMS_PER_TYPE {
-                        info!("                0x0009");
                         return Err(Error::TransportParameterError);
                     }
                     tp.initial_max_streams_uni = max;
@@ -223,7 +217,6 @@ impl TransportParams {
                     let ack_delay_exponent = val.read_varint()?;
                     // Values above 20 are invalid.
                     if ack_delay_exponent > 20 {
-                        info!("                0x000a");
                         return Err(Error::TransportParameterError);
                     }
                     tp.ack_delay_exponent = ack_delay_exponent;
@@ -233,7 +226,6 @@ impl TransportParams {
                     let max_ack_delay = val.read_varint()?;
                     // Values of 2^14 or greater are invalid.
                     if max_ack_delay >= 2_u64.pow(14) {
-                        info!("                0x000b");
                         return Err(Error::TransportParameterError);
                     }
                     tp.max_ack_delay = max_ack_delay;
@@ -246,7 +238,6 @@ impl TransportParams {
                 0x000d => {
                     // This transport parameter is only sent by a server.
                     if is_server {
-                        info!("                0x000d");
                         return Err(Error::TransportParameterError);
                     }
                     tp.preferred_address = Some(PreferredAddress::from_bytes(val)?.0);
@@ -257,7 +248,6 @@ impl TransportParams {
                     // The value of active_connection_id_limit parameter MUST
                     // be at least 2.
                     if limit < 2 {
-                        info!("                0x000d");
                         return Err(Error::TransportParameterError);
                     }
                     tp.active_conn_id_limit = limit;
@@ -270,7 +260,6 @@ impl TransportParams {
                 0x00010 => {
                     // This transport parameter is only sent by a server.
                     if is_server {
-                        info!("                0x0010");
                         return Err(Error::TransportParameterError);
                     }
                     tp.retry_source_connection_id = Some(ConnectionId::new(val));
@@ -282,7 +271,6 @@ impl TransportParams {
 
                         return Err(Error::TransportParameterError);
                     }*/
-                    info!("0x0020:{}", max_datagram_frame_size);
                     tp.max_datagram_frame_size = max_datagram_frame_size;
                 }
 
@@ -308,7 +296,6 @@ impl TransportParams {
         is_server: bool,
         mut buf: &mut [u8],
     ) -> Result<usize> {
-        info!("encode buf :{:?}", buf);
         let len = buf.len();
 
         if is_server {
@@ -422,7 +409,7 @@ impl TransportParams {
                 buf.write(scid)?;
             }
         }
-        info!("encode max_datasize: {}", tp.max_datagram_frame_size);
+
         if tp.max_datagram_frame_size != 0 {
             buf.write_varint(0x0020)?;
             buf.write_varint(codec::encode_varint_len(tp.max_datagram_frame_size) as u64)?;
@@ -607,38 +594,37 @@ impl PreferredAddress {
 }
 
 #[derive(Clone)]
-pub struct DatagramConfig
-{
+pub struct DatagramConfig {
     pub local_max_datagram_frame_size: u64,
 
-    pub send_timeout:u64,
+    pub send_timeout: u64,
 
-    pub prioroity:u8,
-    
-    pub datagram_event_mask:u8,
+    pub prioroity: u8,
+
+    pub datagram_event_mask: u8,
 }
 
 impl DatagramConfig {
     pub fn new(
-    local_max_datagram_frame_size: u64,
-    send_timeout:u64,
-    prioroity:u8,
-    datagram_event_mask:u8,
-    )->Self
-    {
-        Self { 
-        local_max_datagram_frame_size:local_max_datagram_frame_size, 
-        send_timeout: send_timeout,
-        prioroity: prioroity,
-        datagram_event_mask: datagram_event_mask }
+        local_max_datagram_frame_size: u64,
+        send_timeout: u64,
+        prioroity: u8,
+        datagram_event_mask: u8,
+    ) -> Self {
+        Self {
+            local_max_datagram_frame_size: local_max_datagram_frame_size,
+            send_timeout: send_timeout,
+            prioroity: prioroity,
+            datagram_event_mask: datagram_event_mask,
+        }
     }
-    pub fn default()->Self
-    {
-        Self { 
-        local_max_datagram_frame_size:0, 
-        send_timeout: 0,
-        prioroity: 0,
-        datagram_event_mask: 0 }
+    pub fn default() -> Self {
+        Self {
+            local_max_datagram_frame_size: 0,
+            send_timeout: 0,
+            prioroity: 0,
+            datagram_event_mask: 0,
+        }
     }
 }
 #[cfg(test)]

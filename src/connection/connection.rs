@@ -445,7 +445,7 @@ impl Connection {
                 Err(Error::Done) => left, // stop and skip the remaining data
                 Err(e) => {
                     self.close(false, e.to_wire(), b"").ok(); // close connection
-                    info!("{} recv error and close {:?}", self.trace_id, e); // error
+                    info!("{} recv error and close {:?}", self.trace_id, e);
                     return Err(e);
                 }
             };
@@ -467,7 +467,6 @@ impl Connection {
         info: &PacketInfo,
         pid: Option<usize>,
     ) -> Result<usize> {
-        //info!(" [recv_packet] buf : {:?}", buf);
         if buf.is_empty() {
             return Err(Error::Done);
         }
@@ -481,8 +480,8 @@ impl Connection {
         // Parse header of the QUIC packet
         let (mut hdr, mut read) =
             PacketHeader::from_bytes(buf, self.scid()?.len()).map_err(|_| Error::Done)?;
+        
         // Process Version Negotiation packet
-        //print!("error heppened here");
         if hdr.pkt_type == PacketType::VersionNegotiation {
             return self.process_version_negotiation(&hdr, &buf[read..], info.time);
         }
@@ -624,10 +623,10 @@ impl Connection {
         let mut probing_pkt = true;
         #[cfg(feature = "qlog")]
         let mut qframes = vec![];
-        //info!("payload : {:?}", payload);
+
         while !payload.is_empty() {
             let (frame, len) = Frame::from_bytes(&mut payload, hdr.pkt_type)?;
-            // read frames from packet
+
             if frame.ack_eliciting() {
                 ack_eliciting_pkt = true;
             }
@@ -638,7 +637,7 @@ impl Connection {
             if self.qlog.is_some() {
                 qframes.push(frame.to_qlog());
             }
-            // recv_frame process the frame
+
             self.recv_frame(frame, &hdr, pid, space_id, info.time)?;
             let _ = payload.split_to(len);
         }
@@ -767,7 +766,6 @@ impl Connection {
                 // Process acknowledgement
                 let handshake_status = self.handshake_status();
                 let path = self.paths.get_mut(path_id)?;
-
                 let (lost_pkts, lost_bytes) = path.recovery.on_ack_received(
                     &ack_ranges,
                     ack_delay,
@@ -1000,7 +998,6 @@ impl Connection {
                 self.streams.on_streams_blocked_frame_received(max, bidi)?;
             }
             Frame::Datagram { length, data } => {
-                info!("recv_frame test for data:{:?}", data);
                 match self.datagram_map.incoming_datagram(length, data) {
                     Ok(datagram_id) => {
                         //if put success
@@ -1038,7 +1035,6 @@ impl Connection {
                         return Err(e);
                     }
                 }
-                //push datagram to recv_queue
             }
         }
         Ok(())
@@ -2744,7 +2740,6 @@ impl Connection {
             let length = datagram.0;
             let data = datagram.1;
             let data_copy=Bytes::from(data.to_vec());
-            info!("try_write_datagram_frames test for data:{:?}", data);
             let frame_hdr_len = frame::datagram_header_wire_len(length);
             let frame_len = frame_hdr_len + data.len();
             let _ = frame::encode_datagram_header(length, &mut out[len..len + frame_hdr_len]);
@@ -4199,7 +4194,6 @@ impl Connection {
         length: Option<usize>,
         drop_if: bool,
     ) -> Result<()> {
-        info!("connection test for data:{:?}", data);
         match self.datagram_map.send_datagram(data, length, drop_if) {
             Ok(drop_num) => {
                 if drop_num > 0 {
@@ -4216,7 +4210,6 @@ impl Connection {
     //get a datagram that recv
     pub fn datagram_recv(&mut self) -> Option<Bytes> {
         if let Some((length, data)) = self.datagram_map.get_datagram() {
-            info!("datagram_recv test for data:{:?}", data);
             return Some(data);
         } else {
             return None;
