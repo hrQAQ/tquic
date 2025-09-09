@@ -582,33 +582,28 @@ impl Endpoint {
                     conn.stream_destroy(stream_id);
                 }
                 Event::DatagramAcked() => {
-                    if conn.datagram_mask() & 0b00000100!=0
-                    {
-                    self.handler.on_datagram_acked(conn);
+                    if conn.datagram_mask() & 0b00000100 != 0 {
+                        self.handler.on_datagram_acked(conn);
                     }
                 }
                 Event::DatagramLost() => {
-                    if conn.datagram_mask() & 0b00000010!=0
-                    {
-                    self.handler.on_datagram_losted(conn);
+                    if conn.datagram_mask() & 0b00000010 != 0 {
+                        self.handler.on_datagram_losted(conn);
                     }
                 }
                 Event::DatagramDrop(drop_num) => {
-                    if conn.datagram_mask() & 0b00010000!=0
-                    {
-                    self.handler.on_datagram_drop(conn);
+                    if conn.datagram_mask() & 0b00010000 != 0 {
+                        self.handler.on_datagram_drop(conn);
                     }
                 }
                 Event::DatagramReceived() => {
-                    if conn.datagram_mask() & 0b00000001!=0
-                    {
+                    if conn.datagram_mask() & 0b00000001 != 0 {
                         self.handler.on_datagram_recvived(conn);
                     }
                 }
                 Event::Datagramlongtime() => {
-                    if conn.datagram_mask() & 0b00001000!=0
-                    {
-                    self.handler.on_datagram_longtime(conn);
+                    if conn.datagram_mask() & 0b00001000 != 0 {
+                        self.handler.on_datagram_longtime(conn);
                     }
                 }
             }

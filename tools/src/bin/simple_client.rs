@@ -66,7 +66,6 @@ pub struct ClientOpt {
     #[clap(long, default_value = "1200", value_name = "SIZE")]
     pub max_datagram_frame_size: usize,
 
-
     /// Send timeout (in microseconds) for datagrams.
     #[clap(long, default_value = "500000", value_name = "US")]
     pub send_timeout: u64,
@@ -102,9 +101,7 @@ struct Client {
 
 impl Client {
     fn new(option: &ClientOpt) -> Result<Self> {
-
-        if option.datagram_event_mask>=32
-        {
+        if option.datagram_event_mask >= 32 {
             return Err("the datagram_event_mask is invalid".into());
         }
         let mut config = Config::new()?;
@@ -128,7 +125,7 @@ impl Client {
             option.max_datagram_frame_size as u64,
             option.send_timeout,
             option.priority,
-            option.datagram_event_mask      
+            option.datagram_event_mask,
         );
 
         Ok(Client {
