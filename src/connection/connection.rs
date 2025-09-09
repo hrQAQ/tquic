@@ -30,6 +30,7 @@ use bytes::Bytes;
 use enumflags2::bitflags;
 use enumflags2::BitFlags;
 use log::*;
+use serde::de;
 use strum::IntoEnumIterator;
 
 use self::cid::ConnectionIdItem;
@@ -4197,6 +4198,11 @@ impl Connection {
         match self.datagram_map.send_datagram(data, length, drop_if) {
             Ok(drop_num) => {
                 if drop_num > 0 {
+                    debug!(
+                        "{} datagram drop {} due to full queue",
+                        self.trace_id,
+                        drop_num
+                    );
                     self.events.add(Event::DatagramDrop(drop_num));
                 }
                 Ok(())

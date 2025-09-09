@@ -47,11 +47,3 @@ path="src/bin/simple_server.rs"
 [[bin]]
 name="simple_client"
 path="src/bin/simple_client.rs"
-
-[[bin]]
-name="server"
-path="src/bin/server.rs"
-
-[[bin]]
-name="client"
-path="src/bin/client.rs"
