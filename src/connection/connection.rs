@@ -2640,10 +2640,12 @@ impl Connection {
         let mut cap: usize = out.len();
 
         while let Some((frame_priority, stream_id)) = self.streams.peek_sendable() {
-            if frame_priority<datagram_priotrity && !is_lower  || !self.datagram_map.if_out_empty()
-            {
-                // next run try_write_stream_frame
-                info!("the {} stream frame priority lower than datagram, so all stream delay",stream_id);
+            // 1. datagram_map 为非空
+            // 2. 当前 stream frame 的优先级 低于 datagram frame 的优先级，值越大优先级越低
+            // 3. is_lower = false,表示当前发送截断为发送 高优先级的 stream frame
+            if !self.datagram_map.if_out_empty() && frame_priority > datagram_priotrity && !is_lower {
+                // next run try_write_datagram_frame
+                info!("the {} stream frame priority higher than datagram, so all datagram delay",stream_id);
                 return Ok(());
             }
             let stream = match self.streams.get_mut(stream_id) {
