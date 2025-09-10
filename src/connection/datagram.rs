@@ -197,7 +197,7 @@ impl DatagramMap {
             if elapsed >= timeout {
                 let datagramunit = self.out_queue.pop_front().unwrap();
                 self.out_total_size -= datagramunit.data.len() as u64;
-                event_queue.add(crate::Event::Datagramlongtime());
+                event_queue.add(crate::Event::DatagramLongtime());
                 info!(
                     "Dropped datagram due to send timeout: {:?}",
                     datagramunit.datagram_id
