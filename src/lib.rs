@@ -794,6 +794,8 @@ impl Config {
         send_timeout: u64,
         priority: u8,
         datagram_event_mask: u8,
+        datagram_out_size: u64,
+        datagram_in_size: u64,
     ) {
         self.local_transport_params.max_datagram_frame_size = max_datagram_frame_size;
         // not need set max delay
@@ -803,6 +805,8 @@ impl Config {
             send_timeout,
             priority,
             datagram_event_mask,
+            datagram_out_size,
+            datagram_in_size,
         );
     }
 }

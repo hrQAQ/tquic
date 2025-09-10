@@ -76,16 +76,18 @@ impl DatagramMap {
         send_timeout: u64,
         priority: u8,
         datagram_event_mask: u8,
+        datagram_out_size: u64,
+        datagram_in_size: u64,
     ) -> Self {
         Self {
             out_queue: VecDeque::new(),
             index_out: 0,
             out_total_size: 0,
-            out_max_size: 1024 * 1024,
+            out_max_size: datagram_out_size,
             in_queue: VecDeque::new(),
             index_in: 0,
             in_total_size: 0,
-            in_max_size: 1024 * 1024,
+            in_max_size: datagram_in_size,
             local_max_datagram_frame_size,
             peer_max_datagram_frame_size,
             send_timeout,
@@ -362,6 +364,8 @@ pub(crate) mod tests {
             100,  // Send timeout in milliseconds (small value for testing)
             0,    // Priority
             31,   // Datagram event mask (all events enabled)
+            1024 * 1024,
+            1024 * 1024,
         );
 
         let mut event_queue = EventQueue::default();
@@ -390,8 +394,13 @@ pub(crate) mod tests {
     #[test]
     fn test_datagram_timeout_drop() -> Result<(), Error> {
         let mut datagram_map = DatagramMap::new(
-            1024, 1024, 100, // Set timeout to 100 milliseconds for testing
-            0, 31,
+            1024,
+            1024,
+            100, // Set timeout to 100 milliseconds for testing
+            0,
+            31,
+            1024 * 1024,
+            1024 * 1024,
         );
 
         let mut event_queue = EventQueue::default();
@@ -418,7 +427,7 @@ pub(crate) mod tests {
 
     #[test]
     fn test_datagram_queue_full_drop() -> Result<(), Error> {
-        let mut datagram_map = DatagramMap::new(1024, 1024, 1000, 0, 31);
+        let mut datagram_map = DatagramMap::new(1024, 1024, 1000, 0, 31, 1024 * 1024, 1024 * 1024);
         let mut event_queue = EventQueue::default();
         datagram_map.out_max_size = 30; // Reduce outgoing queue size for overflow testing
 
@@ -473,7 +482,7 @@ pub(crate) mod tests {
 
     #[test]
     fn test_datagram_incoming_and_get() -> Result<(), Error> {
-        let mut datagram_map = DatagramMap::new(1024, 1024, 1000, 0, 31);
+        let mut datagram_map = DatagramMap::new(1024, 1024, 1000, 0, 31, 1024 * 1024, 1024 * 1024);
 
         // Incoming datagram to the "in queue"
         let data = Bytes::from("incoming test datagram");
@@ -504,6 +513,8 @@ pub(crate) mod tests {
             1000, // send_timeout
             0,    // priority
             0,    // datagram_event_mask
+            1024 * 1024,
+            1024 * 1024,
         );
 
         // Test Case 1: Receiving datagram when local support is disabled should fail
@@ -552,7 +563,10 @@ pub(crate) mod tests {
             1000, // send_timeout
             0,    // priority
             0,    // datagram_event_mask
+            1024 * 1024,
+            1024 * 1024,
         );
+
         let mut event_queue = EventQueue::default();
 
         // Set 1KB limits for both incoming and outgoing queues
@@ -639,6 +653,8 @@ pub(crate) mod tests {
             1000, // send_timeout (not triggered in this test)
             0,    // priority
             0,    // datagram_event_mask
+            1024 * 1024,
+            1024 * 1024,
         );
         let mut event_queue = EventQueue::default();
         datagram_map.set_out_max_size(1024); // Set outgoing queue max size to 1024 bytes
@@ -731,6 +747,8 @@ pub(crate) mod tests {
             1000, // send_timeout (irrelevant for receiver test)
             0,    // priority
             0,    // datagram_event_mask
+            1024 * 1024,
+            1024 * 1024,
         );
         // Set incoming queue max size to 1024 bytes (1KB)
         datagram_map.in_max_size = 1024;
@@ -801,6 +819,8 @@ pub(crate) mod tests {
             1000, // send_timeout
             0,    // priority
             0,    // datagram_event_mask
+            1024 * 1024,
+            1024 * 1024,
         );
         datagram_map.set_out_max_size(1024); // Set initial outgoing limit to 1KB
 
@@ -855,6 +875,8 @@ pub(crate) mod tests {
             1000, // send_timeout
             0,    // priority
             0,    // datagram_event_mask
+            1024 * 1024,
+            1024 * 1024,
         );
 
         // 2. Populate outgoing and incoming queues
@@ -932,6 +954,8 @@ pub(crate) mod tests {
             1000, // send_timeout
             0,    // priority
             0,    // datagram_event_mask
+            1024 * 1024,
+            1024 * 1024,
         );
 
         // 2. Add data to both outgoing and incoming queues
@@ -1089,6 +1113,8 @@ pub(crate) mod tests {
             1000, // send_timeout (irrelevant for this test)
             0,    // priority
             0,    // datagram_event_mask
+            1024 * 1024,
+            1024 * 1024,
         );
         let mut event_queue = EventQueue::default();
         // 2. Create empty data (zero-length Bytes)
@@ -1164,6 +1190,8 @@ pub(crate) mod tests {
             1000, // send_timeout (not triggered in this test)
             0,    // priority
             0,    // datagram_event_mask
+            1024 * 1024,
+            1024 * 1024,
         );
         let mut event_queue = EventQueue::default();
         datagram_map.set_out_max_size(1024); // Set outgoing queue capacity to 1KB (1024 bytes)
@@ -1243,6 +1271,8 @@ pub(crate) mod tests {
             1000, // send_timeout (not triggered)
             0,    // priority
             0,    // datagram_event_mask
+            1024 * 1024,
+            1024 * 1024,
         );
 
         // 2. Attempt to send a datagram
@@ -1280,6 +1310,8 @@ pub(crate) mod tests {
             1,    // send_timeout = 1ms (global timeout for all datagrams)
             0,    // priority
             0,    // datagram_event_mask
+            1024 * 1024,
+            1024 * 1024,
         );
         let mut event_queue = EventQueue::default();
         // 2. Send a datagram that will expire after 1ms
@@ -1328,6 +1360,8 @@ pub(crate) mod tests {
             1000, // send_timeout (not used in this test)
             0,    // priority (irrelevant)
             0,    // datagram_event_mask (irrelevant)
+            1024 * 1024,
+            1024 * 1024,
         );
         datagram_map.in_max_size = 1024; // Set initial incoming queue max size to 1KB
 
@@ -1383,6 +1417,8 @@ pub(crate) mod tests {
             1000, // send_timeout
             0,    // priority
             0,    // datagram_event_mask
+            1024 * 1024,
+            1024 * 1024,
         );
 
         // 1. Set outgoing queue limit to 2KB (2 * granularity) and verify
@@ -1421,6 +1457,8 @@ pub(crate) mod tests {
             1000, // send_timeout
             0,    // priority
             0,    // datagram_event_mask
+            1024 * 1024,
+            1024 * 1024,
         );
         let mut event_queue = EventQueue::default();
         // Create datagram with identical content
@@ -1539,6 +1577,8 @@ pub(crate) mod tests {
             1000, // send_timeout (unrelated to queue size)
             0,    // priority (unrelated to queue size)
             0,    // datagram_event_mask (unrelated to queue size)
+            1024 * 1024,
+            1024 * 1024,
         );
         let explicit_limit_kb = 5;
         let explicit_limit_bytes = explicit_limit_kb * DATAGRAM_QUEUE_GRANULARITY_BYTES;
@@ -1559,6 +1599,8 @@ pub(crate) mod tests {
             1000, // send_timeout
             0,    // priority
             0,    // datagram_event_mask
+            1024 * 1024,
+            1024 * 1024,
         );
 
         assert_eq!(

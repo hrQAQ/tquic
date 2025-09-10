@@ -217,6 +217,16 @@ typedef struct quic_transport_methods_t {
    * is optional.
    */
   void (*on_new_token)(void *tctx, struct quic_conn_t *conn, const uint8_t *token, size_t token_len);
+
+  void (*on_datagram_acked)(struct quic_conn_t *conn);
+
+  void (*on_datagram_lost)(struct quic_conn_t *conn);
+
+  void (*on_datagram_recvived)(struct quic_conn_t *conn);
+
+  void (*on_datagram_drop)(struct quic_conn_t *conn);
+
+  void (*on_datagram_longtime)(struct quic_conn_t *conn);
 } quic_transport_methods_t;
 
 typedef void *quic_transport_context_t;

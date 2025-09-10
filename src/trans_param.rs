@@ -587,6 +587,10 @@ pub struct DatagramConfig {
     pub priority: u8,
 
     pub datagram_event_mask: u8,
+
+    pub datagram_out_size: u64,
+
+    pub datagram_in_size: u64,
 }
 
 impl DatagramConfig {
@@ -595,12 +599,16 @@ impl DatagramConfig {
         send_timeout: u64,
         priority: u8,
         datagram_event_mask: u8,
+        datagram_out_size: u64,
+        datagram_in_size: u64,
     ) -> Self {
         Self {
             local_max_datagram_frame_size: local_max_datagram_frame_size,
             send_timeout: send_timeout,
             priority,
             datagram_event_mask: datagram_event_mask,
+            datagram_out_size,
+            datagram_in_size,
         }
     }
     pub fn default() -> Self {
@@ -609,6 +617,8 @@ impl DatagramConfig {
             send_timeout: 0,
             priority: 0,
             datagram_event_mask: 0,
+            datagram_out_size: 0,
+            datagram_in_size: 0,
         }
     }
 }

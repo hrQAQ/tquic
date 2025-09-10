@@ -47,6 +47,7 @@ use self::ConnectionFlags::*;
 use crate::codec;
 use crate::codec::Decoder;
 use crate::codec::Encoder;
+use crate::connection::datagram::AdjustResult;
 use crate::error::ConnectionError;
 use crate::error::Error;
 use crate::frame;
@@ -254,6 +255,8 @@ impl Connection {
             conf.datagram_config.send_timeout,
             conf.datagram_config.priority,
             conf.datagram_config.datagram_event_mask,
+            conf.datagram_config.datagram_out_size,
+            conf.datagram_config.datagram_in_size,
         );
         //set datagram_map
         let mut tls_session = conf.new_tls_session(server_name, is_server)?;
@@ -2658,9 +2661,13 @@ impl Connection {
             // 1. datagram_map 为非空
             // 2. 当前 stream frame 的优先级 低于 datagram frame 的优先级，值越大优先级越低
             // 3. is_lower = false,表示当前发送截断为发送 高优先级的 stream frame
-            if !self.datagram_map.if_out_empty() && frame_priority > datagram_priotrity && !is_lower {
+            if !self.datagram_map.if_out_empty() && frame_priority > datagram_priotrity && !is_lower
+            {
                 // next run try_write_datagram_frame
-                info!("the {} stream frame priority higher than datagram, so all datagram delay",stream_id);
+                info!(
+                    "the {} stream frame priority higher than datagram, so all datagram delay",
+                    stream_id
+                );
                 return Ok(());
             }
             let stream = match self.streams.get_mut(stream_id) {
@@ -4225,6 +4232,57 @@ impl Connection {
     pub fn datagram_mask(&self) -> u8 {
         self.datagram_map.get_mask()
     }
+
+    pub fn set_datagram_out_size(&mut self, size: u64) {
+        let old_size = self.datagram_map.get_out_max_size();
+        let ans = self.datagram_map.set_out_max_size(size);
+        match ans {
+            AdjustResult::Success => {
+                info!(
+                    "Datagram incoming buffer size increased from {} to {}",
+                    old_size, size
+                );
+            }
+            AdjustResult::Normal => {
+                info!(
+                    "Datagram incoming buffer size reduced from {} to {}",
+                    old_size, size
+                );
+            }
+            AdjustResult::TooSmall => {
+                info!(
+                    "Failed to set datagram incoming buffer size: new size {} is smaller than current size {}",
+                    size,old_size
+                );
+            }
+        }
+    }
+
+    pub fn set_datagram_in_size(&mut self, size: u64) {
+        let old_size = self.datagram_map.get_in_max_size();
+        let ans = self.datagram_map.set_in_max_size(size);
+        match ans {
+            AdjustResult::Success => {
+                info!(
+                    "Datagram incoming buffer size increased from {} to {}",
+                    old_size, size
+                );
+            }
+            AdjustResult::Normal => {
+                info!(
+                    "Datagram incoming buffer size reduced from {} to {}",
+                    old_size, size
+                );
+            }
+            AdjustResult::TooSmall => {
+                info!(
+                    "Failed to set datagram incoming buffer size: new size {} is smaller than current size {}",
+                    size,old_size
+                );
+            }
+        }
+    }
+
     /// Return the internal identifier of the connection on the Endpoint. The
     /// internal identifier is not the same as the Connection ID as described
     /// in RFC 9000.
@@ -5080,7 +5138,7 @@ pub(crate) mod tests {
                 tls_config
             };
             conf.set_tls_config(tls_config);
-            conf.set_local_datagram_config(1024, 5000, 0, 31);
+            conf.set_local_datagram_config(1024, 5000, 0, 31, 1024 * 1024, 1024 * 1024);
 
             Ok(conf)
         }

@@ -84,6 +84,14 @@ pub struct ServerOpt {
     /// Datagram event mask (bitwise OR of DatagramEventMask flags).
     #[clap(long, value_name = "MASK", default_value = "31")]
     pub datagram_event_mask: u8,
+
+    /// Outgoing datagram buffer size in bytes.
+    #[clap(long, default_value = "1048576", value_name = "SIZE")]
+    pub datagram_out_size: u64,
+
+    /// Incoming datagram buffer size in bytes.
+    #[clap(long, default_value = "1048576", value_name = "SIZE")]
+    pub datagram_in_size: u64,
 }
 
 const MAX_BUF_SIZE: usize = 65536;
@@ -128,6 +136,8 @@ impl Server {
             option.send_timeout,
             option.priority,
             option.datagram_event_mask,
+            option.datagram_out_size,
+            option.datagram_in_size,
         );
 
         Ok(Server {
