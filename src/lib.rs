@@ -965,7 +965,7 @@ enum Event {
 
     DatagramDrop(u64),
 
-    Datagramlongtime(),
+    DatagramLongtime(),
 }
 
 #[derive(Default)]
@@ -1075,9 +1075,13 @@ pub trait TransportHandler {
     /// Used to handle this loss event, with conn being the current connection object
     fn on_datagram_lost(&mut self, conn: &mut Connection);
 
+<<<<<<< HEAD
     /// Called when a datagram frame is received locally
     /// Used to handle this reception event, with conn being the current connection object
     fn on_datagram_recvived(&mut self, conn: &mut Connection);
+=======
+    fn on_datagram_received(&mut self, conn: &mut Connection);
+>>>>>>> 9ac41a24b4aa3da3f87f170701ecbadab57af61c
 
     /// Called when the send queue drops unsent frames due to insufficient buffer space
     /// Used to handle this drop event, with conn being the current connection object  
