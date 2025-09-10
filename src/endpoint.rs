@@ -598,7 +598,7 @@ impl Endpoint {
                 }
                 Event::DatagramReceived() => {
                     if conn.datagram_mask() & 0b00000001 != 0 {
-                        self.handler.on_datagram_received(conn);
+                        self.handler.on_datagram_recvived(conn);
                     }
                 }
                 Event::DatagramLongtime() => {
@@ -1862,7 +1862,7 @@ mod tests {
         fn on_datagram_drop(&mut self, conn: &mut Connection) {}
         fn on_datagram_longtime(&mut self, conn: &mut Connection) {}
         fn on_datagram_lost(&mut self, conn: &mut Connection) {}
-        fn on_datagram_received(&mut self, conn: &mut Connection) {}
+        fn on_datagram_recvived(&mut self, conn: &mut Connection) {}
     }
 
     struct ServerStreamContext {
@@ -1949,7 +1949,7 @@ mod tests {
         fn on_datagram_longtime(&mut self, conn: &mut Connection) {}
         fn on_datagram_lost(&mut self, conn: &mut Connection) {}
 
-        fn on_datagram_received(&mut self, conn: &mut Connection) {}
+        fn on_datagram_recvived(&mut self, conn: &mut Connection) {}
     }
 
     // Test Initial packet
