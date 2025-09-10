@@ -243,7 +243,7 @@ impl TransportHandler for ServerHandler {
         match conn.datagram_send(data.clone(), Some(data.len()), true) {
             Ok(()) => {
                 info!(
-                    "{} connetion succeed ot send a datagram:{:?}",
+                    "{} connection succeed to send a datagram:{:?}",
                     conn.trace_id(),
                     data
                 );
@@ -298,7 +298,7 @@ impl TransportHandler for ServerHandler {
         debug!("{} connection has a datagram acked", _conn.trace_id());
     }
     fn on_datagram_drop(&mut self, _conn: &mut Connection) {
-        debug!("{} connection droped a datagram", _conn.trace_id());
+        debug!("{} connection dropped a datagram", _conn.trace_id());
     }
     fn on_datagram_longtime(&mut self, _conn: &mut Connection) {
         debug!(
@@ -306,14 +306,14 @@ impl TransportHandler for ServerHandler {
             _conn.trace_id()
         );
     }
-    fn on_datagram_losted(&mut self, _conn: &mut Connection) {
-        debug!("{} connection has a datagram losted", _conn.trace_id());
+    fn on_datagram_lost(&mut self, _conn: &mut Connection) {
+        debug!("{} connection has a datagram lost", _conn.trace_id());
     }
     fn on_datagram_recvived(&mut self, _conn: &mut Connection) {
         let data = if _conn.datagram_readable() {
             _conn.datagram_recv().unwrap()
         } else {
-            debug!("why cannt read");
+            debug!("why cannot read");
             return;
         };
         info!("server has recvived :{:?}", data);

@@ -588,7 +588,7 @@ impl Endpoint {
                 }
                 Event::DatagramLost() => {
                     if conn.datagram_mask() & 0b00000010 != 0 {
-                        self.handler.on_datagram_losted(conn);
+                        self.handler.on_datagram_lost(conn);
                     }
                 }
                 Event::DatagramDrop(drop_num) => {
@@ -1861,7 +1861,7 @@ mod tests {
         fn on_datagram_acked(&mut self, conn: &mut Connection) {}
         fn on_datagram_drop(&mut self, conn: &mut Connection) {}
         fn on_datagram_longtime(&mut self, conn: &mut Connection) {}
-        fn on_datagram_losted(&mut self, conn: &mut Connection) {}
+        fn on_datagram_lost(&mut self, conn: &mut Connection) {}
         fn on_datagram_recvived(&mut self, conn: &mut Connection) {}
     }
 
@@ -1947,7 +1947,7 @@ mod tests {
         fn on_datagram_acked(&mut self, conn: &mut Connection) {}
         fn on_datagram_drop(&mut self, conn: &mut Connection) {}
         fn on_datagram_longtime(&mut self, conn: &mut Connection) {}
-        fn on_datagram_losted(&mut self, conn: &mut Connection) {}
+        fn on_datagram_lost(&mut self, conn: &mut Connection) {}
 
         fn on_datagram_recvived(&mut self, conn: &mut Connection) {}
     }
