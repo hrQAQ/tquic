@@ -226,7 +226,7 @@ impl Error {
             Error::IoError(_) => -112,
             Error::ErrorDatagramTest => -113,
             Error::DatagramFrameBeyondMemory => -114,
-            Error::DatagramInvalidParameter=> -115,
+            Error::DatagramInvalidParameter => -115,
         }
     }
 }

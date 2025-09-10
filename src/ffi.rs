@@ -1771,15 +1771,15 @@ pub struct TransportMethods {
     pub on_new_token:
         Option<fn(tctx: *mut c_void, conn: &mut Connection, token: *const u8, token_len: size_t)>,
 
-    pub on_datagram_acked:Option<fn(conn:&mut Connection)>,
+    pub on_datagram_acked: Option<fn(conn: &mut Connection)>,
 
-    pub on_datagram_lost:Option<fn(conn:&mut Connection)>,
+    pub on_datagram_lost: Option<fn(conn: &mut Connection)>,
 
-    pub on_datagram_recvived:Option<fn(conn:&mut Connection)>,
+    pub on_datagram_recvived: Option<fn(conn: &mut Connection)>,
 
-    pub on_datagram_drop:Option<fn(conn:&mut Connection)>,
+    pub on_datagram_drop: Option<fn(conn: &mut Connection)>,
 
-    pub on_datagram_longtime:Option<fn(conn:&mut Connection)>,
+    pub on_datagram_longtime: Option<fn(conn: &mut Connection)>,
 }
 
 #[repr(transparent)]
@@ -1858,42 +1858,37 @@ impl crate::TransportHandler for TransportHandler {
             }
         }
     }
-    fn on_datagram_acked(&mut self,conn:&mut Connection){
+    fn on_datagram_acked(&mut self, conn: &mut Connection) {
         unsafe {
-            if let Some(f)=(*self.methods).on_datagram_acked
-            {
+            if let Some(f) = (*self.methods).on_datagram_acked {
                 f(conn)
             }
         }
     }
-    fn on_datagram_lost(&mut self,conn:&mut Connection){
+    fn on_datagram_lost(&mut self, conn: &mut Connection) {
         unsafe {
-            if let Some(f)=(*self.methods).on_datagram_lost
-            {
+            if let Some(f) = (*self.methods).on_datagram_lost {
                 f(conn)
             }
         }
     }
-    fn on_datagram_recvived(&mut self,conn:&mut Connection){
+    fn on_datagram_recvived(&mut self, conn: &mut Connection) {
         unsafe {
-            if let Some(f)=(*self.methods).on_datagram_recvived
-            {
+            if let Some(f) = (*self.methods).on_datagram_recvived {
                 f(conn)
             }
         }
     }
-    fn on_datagram_drop(&mut self,conn:&mut Connection){
+    fn on_datagram_drop(&mut self, conn: &mut Connection) {
         unsafe {
-            if let Some(f)=(*self.methods).on_datagram_drop
-            {
+            if let Some(f) = (*self.methods).on_datagram_drop {
                 f(conn)
             }
         }
     }
-    fn on_datagram_longtime(&mut self,conn:&mut Connection){
+    fn on_datagram_longtime(&mut self, conn: &mut Connection) {
         unsafe {
-            if let Some(f)=(*self.methods).on_datagram_longtime
-            {
+            if let Some(f) = (*self.methods).on_datagram_longtime {
                 f(conn)
             }
         }
