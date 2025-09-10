@@ -248,7 +248,7 @@ impl TransportHandler for ServerHandler {
     fn on_conn_established(&mut self, conn: &mut Connection) {
         debug!("{} connection is established", conn.trace_id());
         let data = Bytes::from("Hallo, World");
-        match conn.datagram_send(data.clone(), Some(data.len()), true) {
+        match conn.send_datagram(data.clone(), Some(data.len()), true) {
             Ok(()) => {
                 info!(
                     "{} connection succeed to send a datagram:{:?}",

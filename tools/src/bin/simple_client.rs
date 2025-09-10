@@ -349,7 +349,7 @@ impl TransportHandler for ClientHandler {
         };
         info!("client has recvived :{:?}", data);
         let new_data = Bytes::from("Hallo, World,too");
-        match conn.datagram_send(new_data.clone(), Some(new_data.len()), true) {
+        match conn.send_datagram(new_data.clone(), Some(new_data.len()), true) {
             Ok(()) => {
                 info!(
                     "{} connection succeed to send a datagram: {:?}",

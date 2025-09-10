@@ -4197,7 +4197,7 @@ impl Connection {
         self.datagram_map.send_available_space()
     }
     // push data to send
-    pub fn datagram_send(
+    pub fn send_datagram(
         &mut self,
         data: Bytes,
         length: Option<usize>,
