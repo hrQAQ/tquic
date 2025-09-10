@@ -598,10 +598,10 @@ impl Endpoint {
                 }
                 Event::DatagramReceived() => {
                     if conn.datagram_mask() & 0b00000001 != 0 {
-                        self.handler.on_datagram_recvived(conn);
+                        self.handler.on_datagram_received(conn);
                     }
                 }
-                Event::Datagramlongtime() => {
+                Event::DatagramLongtime() => {
                     if conn.datagram_mask() & 0b00001000 != 0 {
                         self.handler.on_datagram_longtime(conn);
                     }
