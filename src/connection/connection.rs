@@ -252,7 +252,7 @@ impl Connection {
             peer_transport_params.max_datagram_frame_size,
             conf.datagram_config.local_max_datagram_frame_size,
             conf.datagram_config.send_timeout,
-            conf.datagram_config.prioroity,
+            conf.datagram_config.priority,
             conf.datagram_config.datagram_event_mask,
         );
         //set datagram_map
@@ -1019,13 +1019,13 @@ impl Connection {
                     }
                     Err(e @ Error::DatagramFrameBeyondMemory) => {
                         error!(
-                            "{} Datagram frame that recevived beyond the local memery",
+                            "{} Datagram frame that recevived beyond the local memory",
                             self.trace_id
                         );
                         let _ = self.close(
                             false,
                             e.to_wire(),
-                            b"DATAGRAM frame beyond the local memery",
+                            b"DATAGRAM frame beyond the local memory",
                         );
                         return Err(e);
                     }
@@ -2765,7 +2765,7 @@ impl Connection {
             len += frame_len;
             cap -= frame_len;
             st.ack_eliciting = true;
-            st.in_flight = true; //it need reserch
+            st.in_flight = true; //it need research
             st.has_data = true;
             st.frames.push(Frame::Datagram {
                 length: length,
@@ -2785,7 +2785,7 @@ impl Connection {
             cap -= frame_len;
             /*let _ = frame::encode_datagram(length, data_copy,&mut out[len..len + frame_hdr_len]);*/
             st.ack_eliciting = true;
-            st.in_flight = true; //it need reserch
+            st.in_flight = true; //it need research
             st.has_data = true;
             /*st.frames.push(Frame::Datagram {
                 length: *length,

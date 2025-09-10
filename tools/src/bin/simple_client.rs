@@ -270,7 +270,7 @@ impl TransportHandler for ClientHandler {
         match conn.datagram_send(data.clone(), Some(data.len()), true) {
             Ok(())=>
             {
-                info!("{} connetion succeed ot send a datagram",conn.trace_id());
+                info!("{} connection succeed to send a datagram",conn.trace_id());
             }
             Err(_e)=>
             {
@@ -340,7 +340,7 @@ impl TransportHandler for ClientHandler {
         info!("a datagram acked");
     }
     fn on_datagram_drop(&mut self, conn: &mut Connection) {
-        debug!("{} connection droped a datagram", conn.trace_id());
+        debug!("{} connection dropped a datagram", conn.trace_id());
     }
     fn on_datagram_longtime(&mut self, conn: &mut Connection) {
         debug!(
@@ -348,8 +348,8 @@ impl TransportHandler for ClientHandler {
             conn.trace_id()
         );
     }
-    fn on_datagram_losted(&mut self, conn: &mut Connection) {
-        debug!("{} connection has a datagram losted", conn.trace_id());
+    fn on_datagram_lost(&mut self, conn: &mut Connection) {
+        debug!("{} connection has a datagram lost", conn.trace_id());
     }
     fn on_datagram_recvived(&mut self, conn: &mut Connection) {
         debug!("{} connection recevived a datagram ", conn.trace_id());
@@ -357,7 +357,7 @@ impl TransportHandler for ClientHandler {
         let data = if conn.datagram_readable() {
             conn.datagram_recv().unwrap()
         } else {
-            debug!("why cannt read");
+            debug!("why cannot read");
             return;
         };
         info!("client has recvived :{:?}", data);
@@ -365,7 +365,7 @@ impl TransportHandler for ClientHandler {
         match conn.datagram_send(new_data.clone(), Some(new_data.len()), true) {
             Ok(()) => {
                 info!(
-                    "{} connetion succeed ot send a datagram: {:?}",
+                    "{} connection succeed to send a datagram: {:?}",
                     conn.trace_id(),
                     new_data
                 );

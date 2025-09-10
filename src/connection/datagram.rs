@@ -64,11 +64,8 @@ pub struct DatagramMap {
     in_max_size: u64,
     local_max_datagram_frame_size: u64,
     peer_max_datagram_frame_size: u64,
-
     send_timeout: u64,
-
     priority: u8,
-
     datagram_event_mask: u8,
 }
 impl DatagramMap {

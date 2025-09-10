@@ -1069,7 +1069,7 @@ pub trait TransportHandler {
 
     fn on_datagram_acked(&mut self, conn: &mut Connection);
 
-    fn on_datagram_losted(&mut self, conn: &mut Connection);
+    fn on_datagram_lost(&mut self, conn: &mut Connection);
 
     fn on_datagram_recvived(&mut self, conn: &mut Connection);
 
