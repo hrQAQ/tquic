@@ -267,10 +267,6 @@ impl TransportParams {
 
                 0x0020 => {
                     let max_datagram_frame_size = val.read_varint()?;
-                    /*if max_datagram_frame_size < 0 /*|| max_datagram_frame_size > 65535*/{
-
-                        return Err(Error::TransportParameterError);
-                    }*/
                     tp.max_datagram_frame_size = max_datagram_frame_size;
                 }
 
@@ -425,17 +421,6 @@ impl TransportParams {
             buf.write_varint(0xbaad)?;
             buf.write_varint(0)?;
         }
-
-        // no matter what, always encode max_datagram_frame_size
-        //buf.write_varint(0x0020)?;
-        //buf.write_varint(codec::encode_varint_len(tp.max_datagram_frame_size) as u64)?;
-        //buf.write_varint(tp.max_datagram_frame_size)?;
-        /*  if tp.max_datagram_frame_size!=0
-        {
-            buf.write_varint(0x0020)?;
-            buf.write_varint(codec::encode_varint_len(tp.max_datagram_frame_size) as u64)?;
-            buf.write_varint(tp.max_datagram_frame_size)?;
-        }*/
 
         Ok(len - buf.len())
     }

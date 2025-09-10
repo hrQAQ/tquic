@@ -30,8 +30,6 @@ use tquic::Error;
 use tquic::PacketInfo;
 use tquic::TlsConfig;
 use tquic::TransportHandler;
-//use tquic_tools::QuicSocket;
-//use tquic_tools::Result;
 use tquic_tools::qskt::QuicSocket;
 use tquic_tools::qskt::Result;
 
@@ -264,25 +262,6 @@ impl TransportHandler for ServerHandler {
 
     fn on_stream_readable(&mut self, conn: &mut Connection, stream_id: u64) {
         debug!("{} stream {} is readable", conn.trace_id(), stream_id,);
-
-        /*while let Ok((read, fin)) = conn.stream_read(stream_id, &mut self.buf) {
-            debug!(
-                "{} read {} bytes from stream {}, fin: {}",
-                conn.trace_id(),
-                read,
-                stream_id,
-                fin
-            );
-            if fin {
-                match conn.stream_write(stream_id, Bytes::from_static(b"HTTP/0.9 200 OK\n"), true) {
-                    Ok(_) | Err(Error::Done) => {}
-                    Err(e) => {
-                        error!("stream send failed {:?}", e);
-                    }
-                };
-                return;
-            }
-        }*/
     }
 
     fn on_stream_writable(&mut self, conn: &mut Connection, stream_id: u64) {

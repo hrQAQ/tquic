@@ -2754,7 +2754,10 @@ impl Connection {
         let mut len = 0;
         let mut cap = out.len();
         let datagram_header = frame::MAX_DATAGRAM_OVERHEAD;
-        while let Some(datagram) = self.datagram_map.outcome_datagram(cap - datagram_header) {
+        while let Some(datagram) = self
+            .datagram_map
+            .outcome_datagram(cap - datagram_header, &mut self.events)
+        {
             let length = datagram.0;
             let data = datagram.1;
             let data_copy = Bytes::from(data.to_vec());
@@ -2774,24 +2777,6 @@ impl Connection {
             });
 
             //get a datagram ready to send
-            /*let length = & datagram.0;
-            let data = datagram.1;
-            let data_copy=Bytes::from(data.to_vec());
-            info!("try_write_datagram_frames test for data:{:?}", data);
-            let frame_hdr_len = frame::datagram_header_wire_len(*length);
-            let frame_len = frame_hdr_len + data.len();
-            let frame=Frame::Datagram { length: *length, data: data };
-            Connection::write_frame_to_packet(frame, out, st)?;
-            len += frame_len;
-            cap -= frame_len;
-            /*let _ = frame::encode_datagram(length, data_copy,&mut out[len..len + frame_hdr_len]);*/
-            st.ack_eliciting = true;
-            st.in_flight = true; //it need research
-            st.has_data = true;
-            /*st.frames.push(Frame::Datagram {
-                length: *length,
-                data: data,
-            });*/*/
             if cap <= frame::MAX_DATAGRAM_OVERHEAD {
                 break;
             }
@@ -6957,14 +6942,6 @@ pub(crate) mod tests {
         let (_, datagram) = test_pair.server.datagram_map.get_datagram().unwrap();
         assert_eq!(datagram, Bytes::from(content));
         Ok(())
-
-        /*let stream = test_pair.server.streams.get_mut(0).unwrap();
-        assert!(stream.is_readable());
-
-        let mut buf = vec![0; 128];
-        assert_eq!(stream.recv.read(&mut buf)?, (content.len(), false));
-        assert_eq!(content.as_bytes(), &buf[..content.len()]);
-        Ok(())*/
     }
     #[test]
     fn recv_packet_skipped_packet_number() -> Result<()> {
@@ -8413,6 +8390,7 @@ pub(crate) mod tests {
     fn datagram_queue_overflow() -> Result<()> {
         // Initialize test environment and complete handshake
         let mut test_pair = TestPair::new_with_test_config()?;
+        let mut event_queue = EventQueue::default();
         assert_eq!(
             test_pair.handshake(),
             Ok(()),
@@ -8452,7 +8430,11 @@ pub(crate) mod tests {
 
         // 4. Verify actual count of datagrams in queue
         let mut count = 0;
-        while let Some(_) = test_pair.client.datagram_map.outcome_datagram(100) {
+        while let Some(_) = test_pair
+            .client
+            .datagram_map
+            .outcome_datagram(100, &mut event_queue)
+        {
             count += 1;
         }
         assert_eq!(

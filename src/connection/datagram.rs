@@ -17,6 +17,7 @@ use crate::frame;
 use crate::frame::Frame;
 use crate::DatagramConfig;
 use crate::Error;
+use crate::EventQueue;
 use bytes::Bytes;
 use log::info;
 use std::collections::VecDeque;
@@ -133,15 +134,6 @@ impl DatagramMap {
         // Drop timed-out frames before adding new datagram
         self.check_timeout();
 
-        /*info!("send_datagram test for data:{:?}", data);
-        info!(
-            "local_max_datagram_size: {}",
-            self.local_max_datagram_frame_size
-        );
-        info!(
-            "peer_max_datagram_size: {}",
-            self.peer_max_datagram_frame_size
-        );*/
         if !self.peer_is_enable() {
             info!("!self.peer_is_enable");
             return Err(Error::ProtocolViolation);
@@ -188,7 +180,11 @@ impl DatagramMap {
     }
 
     // Send a datagram from out_queue
-    pub fn outcome_datagram(&mut self, max_payload_size: usize) -> Option<(Option<usize>, Bytes)> {
+    pub fn outcome_datagram(
+        &mut self,
+        max_payload_size: usize,
+        event_queue: &mut EventQueue,
+    ) -> Option<(Option<usize>, Bytes)> {
         self.check_timeout();
 
         loop {
@@ -201,6 +197,7 @@ impl DatagramMap {
             if elapsed >= timeout {
                 let datagramunit = self.out_queue.pop_front().unwrap();
                 self.out_total_size -= datagramunit.data.len() as u64;
+                event_queue.add(crate::Event::Datagramlongtime());
                 info!(
                     "Dropped datagram due to send timeout: {:?}",
                     datagramunit.datagram_id
@@ -367,6 +364,8 @@ pub(crate) mod tests {
             31,   // Datagram event mask (all events enabled)
         );
 
+        let mut event_queue = EventQueue::default();
+
         // Send a datagram
         let data = Bytes::from("test datagram data");
         let drop_num = datagram_map.send_datagram(data.clone(), None, false)?;
@@ -376,7 +375,7 @@ pub(crate) mod tests {
         );
 
         // Retrieve the datagram immediately (before timeout)
-        let result = datagram_map.outcome_datagram(1024);
+        let result = datagram_map.outcome_datagram(1024, &mut event_queue);
         assert!(
             result.is_some(),
             "The datagram should be retrieved successfully"
@@ -395,6 +394,7 @@ pub(crate) mod tests {
             0, 31,
         );
 
+        let mut event_queue = EventQueue::default();
         // Send a datagram
         let data = Bytes::from("timeout test datagram");
         datagram_map.send_datagram(data.clone(), None, false)?;
@@ -403,7 +403,7 @@ pub(crate) mod tests {
         thread::sleep(Duration::from_millis(200));
 
         // Retrieving should drop the timed-out datagram
-        let result = datagram_map.outcome_datagram(1024);
+        let result = datagram_map.outcome_datagram(1024, &mut event_queue);
         assert!(
             result.is_none(),
             "The datagram should be dropped after timeout"
@@ -419,6 +419,7 @@ pub(crate) mod tests {
     #[test]
     fn test_datagram_queue_full_drop() -> Result<(), Error> {
         let mut datagram_map = DatagramMap::new(1024, 1024, 1000, 0, 31);
+        let mut event_queue = EventQueue::default();
         datagram_map.out_max_size = 30; // Reduce outgoing queue size for overflow testing
 
         let data1 = Bytes::from("1234567890"); // 10 bytes
@@ -443,7 +444,7 @@ pub(crate) mod tests {
         );
 
         // Retrieve and verify the queue order (remaining: data2, data3, data4)
-        let result1 = datagram_map.outcome_datagram(1024);
+        let result1 = datagram_map.outcome_datagram(1024, &mut event_queue);
         assert!(result1.is_some());
         let (_, out_data1) = result1.unwrap();
         assert_eq!(
@@ -451,7 +452,7 @@ pub(crate) mod tests {
             "The first retrieved datagram should be data2"
         );
 
-        let result2 = datagram_map.outcome_datagram(1024);
+        let result2 = datagram_map.outcome_datagram(1024, &mut event_queue);
         assert!(result2.is_some());
         let (_, out_data2) = result2.unwrap();
         assert_eq!(
@@ -459,7 +460,7 @@ pub(crate) mod tests {
             "The second retrieved datagram should be data3"
         );
 
-        let result3 = datagram_map.outcome_datagram(1024);
+        let result3 = datagram_map.outcome_datagram(1024, &mut event_queue);
         assert!(result3.is_some());
         let (_, out_data3) = result3.unwrap();
         assert_eq!(
@@ -552,6 +553,8 @@ pub(crate) mod tests {
             0,    // priority
             0,    // datagram_event_mask
         );
+        let mut event_queue = EventQueue::default();
+
         // Set 1KB limits for both incoming and outgoing queues
         datagram_map.set_out_max_size(1024);
 
@@ -580,8 +583,8 @@ pub(crate) mod tests {
 
         // Take both datagrams from queue for transmission
         let max_payload_size = 1024;
-        datagram_map.outcome_datagram(max_payload_size);
-        datagram_map.outcome_datagram(max_payload_size);
+        datagram_map.outcome_datagram(max_payload_size, &mut event_queue);
+        datagram_map.outcome_datagram(max_payload_size, &mut event_queue);
 
         // Verify outgoing queue is empty after transmission
         assert!(
@@ -637,6 +640,7 @@ pub(crate) mod tests {
             0,    // priority
             0,    // datagram_event_mask
         );
+        let mut event_queue = EventQueue::default();
         datagram_map.set_out_max_size(1024); // Set outgoing queue max size to 1024 bytes
         const DROP_IF: bool = true; // Enable dropping oldest when queue is full
 
@@ -697,8 +701,12 @@ pub(crate) mod tests {
         );
 
         let max_payload_size = 1024; // Larger than all datagrams to avoid size filtering
-        let (_, extracted_data2) = datagram_map.outcome_datagram(max_payload_size).unwrap();
-        let (_, extracted_data3) = datagram_map.outcome_datagram(max_payload_size).unwrap();
+        let (_, extracted_data2) = datagram_map
+            .outcome_datagram(max_payload_size, &mut event_queue)
+            .unwrap();
+        let (_, extracted_data3) = datagram_map
+            .outcome_datagram(max_payload_size, &mut event_queue)
+            .unwrap();
 
         // Verify extracted datagrams are the correct ones (data1 is dropped, data2/data3 remain)
         assert_eq!(
@@ -1082,7 +1090,7 @@ pub(crate) mod tests {
             0,    // priority
             0,    // datagram_event_mask
         );
-
+        let mut event_queue = EventQueue::default();
         // 2. Create empty data (zero-length Bytes)
         let empty_data = Bytes::new();
         assert_eq!(empty_data.len(), 0, "Empty data should have length 0");
@@ -1107,7 +1115,7 @@ pub(crate) mod tests {
         // 4. Retrieve empty datagram from outgoing queue
         let max_payload_size = 1024; // Larger than empty data
         let (data_len, retrieved_data) = datagram_map
-            .outcome_datagram(max_payload_size)
+            .outcome_datagram(max_payload_size, &mut event_queue)
             .expect("Should retrieve empty datagram from outgoing queue");
 
         // Verify retrieved data is empty
@@ -1157,6 +1165,7 @@ pub(crate) mod tests {
             0,    // priority
             0,    // datagram_event_mask
         );
+        let mut event_queue = EventQueue::default();
         datagram_map.set_out_max_size(1024); // Set outgoing queue capacity to 1KB (1024 bytes)
 
         // 2. Step 1: Send 1024-byte data to fill queue exactly to capacity
@@ -1212,7 +1221,7 @@ pub(crate) mod tests {
         // Optional: Verify the retained data is the new 1-byte data
         let max_payload_size = 1024;
         let (retrieved_len, retrieved_data) = datagram_map
-            .outcome_datagram(max_payload_size)
+            .outcome_datagram(max_payload_size, &mut event_queue)
             .expect("Should retrieve retained data from outgoing queue");
         assert_eq!(
             retrieved_len,
@@ -1272,7 +1281,7 @@ pub(crate) mod tests {
             0,    // priority
             0,    // datagram_event_mask
         );
-
+        let mut event_queue = EventQueue::default();
         // 2. Send a datagram that will expire after 1ms
         let test_data = Bytes::from_static(b"expires_soon");
         let drop_num = datagram_map
@@ -1290,7 +1299,7 @@ pub(crate) mod tests {
 
         // 4. Attempt to retrieve the datagram (should be expired and dropped)
         let max_payload_size = 1024;
-        let result = datagram_map.outcome_datagram(max_payload_size);
+        let result = datagram_map.outcome_datagram(max_payload_size, &mut event_queue);
 
         // Verify the expired datagram is dropped (returns None)
         assert!(
@@ -1413,7 +1422,7 @@ pub(crate) mod tests {
             0,    // priority
             0,    // datagram_event_mask
         );
-
+        let mut event_queue = EventQueue::default();
         // Create datagram with identical content
         let data = Bytes::from_static(b"same content");
         let data_len = Some(data.len());
@@ -1446,13 +1455,13 @@ pub(crate) mod tests {
         // 2. Dequeue sent datagrams and verify their IDs
         let max_payload = 1024;
         let (_, item1_data) = datagram_map
-            .outcome_datagram(max_payload)
+            .outcome_datagram(max_payload, &mut event_queue)
             .expect("Should retrieve first sent datagram");
         let (_, item2_data) = datagram_map
-            .outcome_datagram(max_payload)
+            .outcome_datagram(max_payload, &mut event_queue)
             .expect("Should retrieve second sent datagram");
         let (_, item3_data) = datagram_map
-            .outcome_datagram(max_payload)
+            .outcome_datagram(max_payload, &mut event_queue)
             .expect("Should retrieve third sent datagram");
 
         // Note: To verify IDs, we need to track them before dequeuing (since outcome_datagram returns data only)

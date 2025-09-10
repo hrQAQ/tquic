@@ -1067,14 +1067,24 @@ pub trait TransportHandler {
     /// Called when client receives a token in NEW_TOKEN frame.
     fn on_new_token(&mut self, conn: &mut Connection, token: Vec<u8>);
 
+    /// Called when the peer acknowledges receipt of a datagram frame
+    /// Used to handle this acknowledgment event, with conn being the current connection object
     fn on_datagram_acked(&mut self, conn: &mut Connection);
 
+    /// Called when a packet containing a datagram frame is determined to be lost due to transmission timeout
+    /// Used to handle this loss event, with conn being the current connection object
     fn on_datagram_lost(&mut self, conn: &mut Connection);
 
+    /// Called when a datagram frame is received locally
+    /// Used to handle this reception event, with conn being the current connection object
     fn on_datagram_recvived(&mut self, conn: &mut Connection);
 
+    /// Called when the send queue drops unsent frames due to insufficient buffer space
+    /// Used to handle this drop event, with conn being the current connection object  
     fn on_datagram_drop(&mut self, conn: &mut Connection);
 
+    /// Called when frames in the send queue are dropped because they exceed the latest send time
+    /// Used to handle this late-drop event, with conn being the current connection object
     fn on_datagram_longtime(&mut self, conn: &mut Connection);
 }
 

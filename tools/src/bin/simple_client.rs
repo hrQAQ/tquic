@@ -30,8 +30,6 @@ use tquic::Error;
 use tquic::PacketInfo;
 use tquic::TlsConfig;
 use tquic::TransportHandler;
-//use tquic_tools::QuicSocket;
-//use tquic_tools::Result;
 use tquic_tools::qskt::QuicSocket;
 use tquic_tools::qskt::Result;
 
@@ -259,27 +257,6 @@ impl TransportHandler for ClientHandler {
 
     fn on_conn_established(&mut self, conn: &mut Connection) {
         debug!("{} connection is established", conn.trace_id());
-
-        /*match conn.stream_write(0, Bytes::from_static(b"GET /\r\n"), true) {
-            Ok(_) | Err(Error::Done) => {}
-            Err(e) => {
-                error!("stream send failed {:?}", e);
-            }
-        };*/
-        /*let data=Bytes::from("Hallo, World");
-        match conn.datagram_send(data.clone(), Some(data.len()), true) {
-            Ok(())=>
-            {
-                info!("{} connection succeed to send a datagram",conn.trace_id());
-            }
-            Err(_e)=>
-            {
-                error!(
-                "{} failed to send datagram: {}",
-                conn.trace_id(), _e
-                );
-            }
-        }*/
     }
 
     fn on_conn_closed(&mut self, conn: &mut Connection) {
